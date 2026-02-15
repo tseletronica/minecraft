@@ -1,0 +1,23 @@
+# Minecraft Bedrock Gitignore
+
+# Binaries
+*.exe
+*.dll
+*.pdb
+*.log
+*.zip
+
+# World data (Can be large)
+worlds/
+
+# Specific server files
+valid_known_packs.json
+packet-statistics.txt
+packetlimitconfig.json
+profanity_filter.wlist
+release-notes.txt
+stdin.txt
+
+# Keep our behavior pack
+!behavior_packs/clan_system/
+!behavior_packs/clan_system/**/*

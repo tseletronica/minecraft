@@ -58,14 +58,20 @@ system.runInterval(() => {
         }
         const objective = world.scoreboard.getObjective('coins');
         if (objective) {
+            // MOSTRAR NA LATERAL DIREITA (Sidebar)
+            world.scoreboard.setObjectiveAtDisplaySlot('sidebar', { objective: objective });
+
             for (const player of world.getAllPlayers()) {
-                if (!objective.hasParticipant(player)) {
+                if (objective.getScore(player) === undefined) {
                     objective.setScore(player, 0);
                 }
             }
         }
     } catch (e) {}
 }, 100);
+
+// MOSTRAR SALDO NA TELA (REMOVIDO ACTIONBAR POR FAVOR DO SIDEBAR)
+
 
 // Rastrear último atacante de cada jogador
 const lastAttacker = new Map();
@@ -217,8 +223,8 @@ world.beforeEvents.entityHurt.subscribe((event) => {
 console.warn('[CLANS] Script main.js carregado');
 // Enviar mensagem após o mundo carregar
 system.runTimeout(() => {
-    world.sendMessage('§a[CLANS] Sistema carregado com sucesso!');
-    console.warn('[CLANS] Sistema iniciado');
+    world.sendMessage('§d[SISTEMA] Clãs carregado - VERSÃO 1.2.4');
+    console.warn('[CLANS] Sistema iniciado - VERSAO 1.2.4 - SIDEBAR_UI');
 }, 20);
 
 // Quando um jogador entra no servidor
@@ -537,12 +543,44 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
         if (message.startsWith('!setskin ')) {
             event.cancel = true;
-            if (!checkAdmin(player)) return;
-            const index = parseInt(message.split(' ')[1]);
-            const target = player.dimension.getEntities({ location: player.location, maxDistance: 10, typeId: 'minecraft:npc' })[0];
+            
+            if (!checkAdmin(player)) {
+                player.sendMessage('§cVoce nao tem permissao de Admin!');
+                return;
+            }
+
+            const args = message.split(' ');
+            if (args.length < 2) return player.sendMessage('§cUso: !setskin <id>');
+
+            const index = parseInt(args[1]);
+            
+            // Busca QUALQUER entidade perto para analisar
+            const entities = player.dimension.getEntities({ 
+                location: player.location, 
+                maxDistance: 15
+            });
+
+            // Filtra pela que parece ser o NPC
+            const target = entities.find(e => e.typeId === 'minecraft:npc' || e.hasTag('totem_npc') || e.hasTag('clan_shop'));
+
             if (target) {
-                const comp = target.getComponent('minecraft:npc');
-                if (comp) { comp.skinIndex = index; player.sendMessage('§aSkin alterada!'); }
+                // Tenta pegar o componente de várias formas
+                const npcComp = target.getComponent('minecraft:npc') || target.getComponent('npc');
+                
+                if (npcComp) { 
+                    try {
+                        npcComp.skinIndex = index; 
+                        player.sendMessage(`§a[DEBUG] Entity: ${target.typeId}`);
+                        player.sendMessage(`§aSkin alterada para ${index}!`); 
+                    } catch (err) {
+                        player.sendMessage(`§cErro ao aplicar skin: ${err}`);
+                    }
+                } else {
+                    player.sendMessage(`§cERRO: Entity ${target.typeId} nao tem o componente 'minecraft:npc'.`);
+                    player.sendMessage(`§7Tags: ${target.getTags().join(', ')}`);
+                }
+            } else {
+                player.sendMessage('§cErro: Nenhum NPC (ou entidade com tag de clã) encontrado perto de voce.');
             }
             return;
         }
@@ -770,27 +808,35 @@ function maintenanceLoop() {
         }
 
         // --- 2. MANUTENÇÃO DA LOJA DO CLÃ (SÓ NPC) ---
-        let shop = overworld.getEntities({ typeId: 'minecraft:npc', tags: ['clan_shop'] })[0];
-        if (!shop) {
-            shop = overworld.getEntities({ typeId: 'minecraft:npc' }).find(e => e.nameTag === '§6§lLOJA DO CLÃ' || e.hasTag('clan_shop'));
-            if (shop) shop.addTag('clan_shop');
-            else {
-                try {
-                    shop = overworld.spawnEntity('minecraft:npc', SHOP_LOCATION);
-                    shop.nameTag = '§6§lLOJA DO CLÃ';
-                    shop.addTag('clan_shop');
-                } catch(e) {}
-                return;
-            }
+        const shops = overworld.getEntities({ typeId: 'minecraft:npc' }).filter(e => e.nameTag === '§6§lLOJA DO CLÃ' || e.hasTag('clan_shop'));
+        
+        if (shops.length === 0) {
+            try {
+                const newShop = overworld.spawnEntity('minecraft:npc', SHOP_LOCATION);
+                newShop.nameTag = '§6§lLOJA DO CLÃ';
+                newShop.addTag('clan_shop');
+            } catch(e) {}
         }
 
-        if (shop && shop.isValid) {
+        for (const shop of shops) {
+            if (!shop.isValid) continue;
+            if (!shop.hasTag('clan_shop')) shop.addTag('clan_shop');
+            
             const loc = shop.location;
             const dist = Math.sqrt((loc.x-SHOP_LOCATION.x)**2 + (loc.z-SHOP_LOCATION.z)**2);
             if (dist > 1 || loc.y < -60) shop.teleport(SHOP_LOCATION);
-            if (shop.nameTag !== '§6§lLOJA DO CLÃ') shop.nameTag = '§6§lLOJA DO CLÃ';
+            
             const npcComp = shop.getComponent('minecraft:npc');
-            if (npcComp && npcComp.skinIndex !== 30) npcComp.skinIndex = 30;
+            const DESIRED_SKIN = 19; 
+
+            if (npcComp && npcComp.skinIndex !== DESIRED_SKIN) {
+                try {
+                    npcComp.skinIndex = DESIRED_SKIN;
+                    world.sendMessage(`§a[SISTEMA] Skin da Loja atualizada para ${DESIRED_SKIN}!`);
+                } catch (err) {
+                    console.warn(`[CLANS] Erro ao aplicar skin ${DESIRED_SKIN}: ${err}`);
+                }
+            }
             if (!shop.getEffect('resistance')) shop.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
             if (!shop.getEffect('slowness')) shop.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
         }
