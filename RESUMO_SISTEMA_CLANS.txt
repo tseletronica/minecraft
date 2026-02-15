@@ -1,0 +1,71 @@
+===== RESUMO DO SISTEMA DE CLANS =====
+
+O QUE ESTA FUNCIONANDO:
+========================
+
+1. SISTEMA DE CLANS
+   - 4 clans: RED, BLUE, GREEN, YELLOW
+   - Menu de selecao ao entrar no servidor
+   - Tags automaticas (clan_red, clan_blue, etc)
+   - Scoreboard mostrando clans online
+   - Comandos: !clan, !clans
+
+2. FRIENDLY FIRE
+   - Jogadores do mesmo clan NAO podem se machucar
+   - Jogadores de clans diferentes podem atacar
+   - Sistema funcionando perfeitamente
+
+3. COMANDOS
+   - !clan - Ver seu clan
+   - !clans - Ver todos os clans online
+   - !soldado - Spawnar guardiao (COM PROBLEMAS)
+
+PROBLEMA ATUAL: GUARDIOES/SOLDADOS
+===================================
+
+TENTATIVAS FEITAS:
+1. Iron Golem normal - NAO ataca jogadores automaticamente
+2. Vindicator - Ataca mas voce nao quer (cara de vilao)
+3. Entidade customizada - Fica invisivel (problema tecnico)
+
+LIMITACOES DO MINECRAFT BEDROCK:
+- Iron Golem NAO ataca jogadores por padrao (so mobs)
+- Criar entidade customizada com textura requer resource pack complexo
+- Runtime identifier nao esta funcionando nesta versao
+
+OPCOES DISPONIVEIS:
+===================
+
+OPCAO 1: Usar Vindicator
+- Humanoide que ataca jogadores
+- Atributos customizados (180 HP, Forca II, etc)
+- Bloqueia dano em aliados
+- PROBLEMA: Tem cara de vilao
+
+OPCAO 2: Desistir dos guardioes
+- Focar apenas no PvP entre jogadores
+- Sistema de clans funciona perfeitamente
+- Sem NPCs de defesa
+
+OPCAO 3: Criar resource pack completo (COMPLEXO)
+- Requer criar texturas customizadas
+- Requer modelos 3D
+- Requer configuracao complexa
+- Pode levar horas/dias
+
+OPCAO 4: Procurar addon pronto na internet
+- MCPEDL.com
+- Procurar "custom iron golem" ou "guard npc"
+- Integrar com o sistema de clans
+
+RECOMENDACAO:
+=============
+
+Por enquanto, deixar o sistema SEM guardioes e focar no PvP entre jogadores.
+O sistema de clans esta funcionando perfeitamente para isso.
+
+Se realmente quiser guardioes, a opcao mais rapida e:
+- Usar Vindicator (funciona mas tem cara de vilao)
+- OU procurar um addon pronto na internet
+
+===== FIM =====

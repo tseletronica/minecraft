@@ -1,0 +1,101 @@
+═══════════════════════════════════════════════════════════
+    TROUBLESHOOTING - SISTEMA DE CLÃS NÃO FUNCIONA
+═══════════════════════════════════════════════════════════
+
+PROBLEMA: Digitei !clan e não aconteceu nada
+
+═══════════════════════════════════════════════════════════
+    SOLUÇÃO 1: VERIFICAR SE O PACK ESTÁ ATIVO
+═══════════════════════════════════════════════════════════
+
+1. Pare o servidor
+2. Abra o arquivo: worlds/Bedrock level/world_behavior_packs.json
+3. Verifique se está assim:
+
+[
+    {
+        "pack_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "version": [1, 0, 0]
+    }
+]
+
+4. Salve e reinicie o servidor
+
+═══════════════════════════════════════════════════════════
+    SOLUÇÃO 2: HABILITAR EXPERIMENTOS NO MUNDO
+═══════════════════════════════════════════════════════════
+
+O sistema de scripts precisa de experimentos habilitados!
+
+OPÇÃO A - Criar mundo novo:
+1. Delete a pasta: worlds/Bedrock level/
+2. Crie um novo mundo NO JOGO com:
+   - Beta APIs habilitado
+   - Behavior pack "Sistema de Clãs" ativado
+
+OPÇÃO B - Editar mundo existente:
+1. Entre no mundo em modo single player
+2. Vá em Configurações > Experimentos
+3. Ative: "Beta APIs"
+4. Ative o behavior pack "Sistema de Clãs"
+5. Copie a pasta do mundo para: worlds/Bedrock level/
+
+═══════════════════════════════════════════════════════════
+    SOLUÇÃO 3: VERIFICAR CONSOLE DO SERVIDOR
+═══════════════════════════════════════════════════════════
+
+Ao iniciar o servidor, procure por:
+
+✓ "Sistema de Clãs carregado! Use !clan para abrir o menu"
+  → Se aparecer, está funcionando!
+
+✗ Erros como "Script module not found" ou "API version mismatch"
+  → Precisa habilitar experimentos (veja Solução 2)
+
+═══════════════════════════════════════════════════════════
+    SOLUÇÃO 4: VERIFICAR PERMISSÕES
+═══════════════════════════════════════════════════════════
+
+No arquivo server.properties, verifique:
+
+allow-cheats=true  (mude para true se estiver false)
+
+Salve e reinicie o servidor.
+
+═══════════════════════════════════════════════════════════
+    MÉTODO MAIS FÁCIL: CRIAR MUNDO NOVO
+═══════════════════════════════════════════════════════════
+
+1. Renomeie a pasta atual:
+   worlds/Bedrock level/ → worlds/Bedrock level OLD/
+
+2. Abra o Minecraft e crie um novo mundo com:
+   ✓ Nome: Bedrock level
+   ✓ Configurações > Experimentos > Beta APIs: ATIVADO
+   ✓ Behavior Packs > Sistema de Clãs: ATIVADO
+
+3. Entre no mundo uma vez
+
+4. Feche o Minecraft
+
+5. Copie a pasta do mundo de:
+   %localappdata%\Packages\Microsoft.MinecraftUWP_8wekyb3d8bbwe\LocalState\games\com.mojang\minecraftWorlds\
+   
+   Para:
+   worlds/Bedrock level/
+
+6. Inicie o servidor
+
+7. Digite !clan no chat
+
+═══════════════════════════════════════════════════════════
+    AINDA NÃO FUNCIONA?
+═══════════════════════════════════════════════════════════
+
+Verifique:
+1. Versão do servidor é 1.20.0 ou superior?
+2. O behavior pack está em: behavior_packs/clan_system/ ?
+3. Existe o arquivo: behavior_packs/clan_system/scripts/main.js ?
+4. O console do servidor mostra algum erro?
+
+═══════════════════════════════════════════════════════════

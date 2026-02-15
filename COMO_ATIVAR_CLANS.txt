@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════════════
+    COMO ATIVAR O SISTEMA DE CLÃS NO SEU SERVIDOR
+═══════════════════════════════════════════════════════════
+
+✅ O QUE JÁ FOI FEITO:
+  ✓ Behavior pack criado em: behavior_packs/clan_system/
+  ✓ Sistema de 4 clãs configurado: RED, BLUE, GREEN, YELLOW
+  ✓ Arquivo de configuração do mundo criado
+
+📋 PASSOS PARA ATIVAR:
+
+1. PARAR O SERVIDOR (se estiver rodando)
+   - Feche o bedrock_server.exe
+
+2. VERIFICAR ARQUIVOS
+   - Certifique-se que existe: behavior_packs/clan_system/
+   - Certifique-se que existe: worlds/Bedrock level/world_behavior_packs.json
+
+3. INICIAR O SERVIDOR
+   - Execute: bedrock_server.exe
+
+4. TESTAR NO JOGO
+   - Entre no servidor
+   - Digite no chat: !clan
+   - Escolha seu clã!
+
+═══════════════════════════════════════════════════════════
+    COMANDOS DISPONÍVEIS
+═══════════════════════════════════════════════════════════
+
+!clan - Abre o menu de clãs
+
+═══════════════════════════════════════════════════════════
+    OS 4 CLÃS
+═══════════════════════════════════════════════════════════
+
+🔴 [RED]    - Clã Vermelho
+🔵 [BLUE]   - Clã Azul  
+🟢 [GREEN]  - Clã Verde
+🟡 [YELLOW] - Clã Amarelo
+
+═══════════════════════════════════════════════════════════
+    SISTEMA DE PONTOS
+═══════════════════════════════════════════════════════════
+
+• Matar jogador de outro clã = +10 pontos para seu clã
+• Seu nome ficará: [RED] SeuNome (com a cor do clã)
+• Veja o ranking com !clan > Ranking de Clãs
+
+═══════════════════════════════════════════════════════════
+    PROBLEMAS?
+═══════════════════════════════════════════════════════════
+
+Se o comando !clan não funcionar:
+
+1. Verifique se o servidor carregou o pack:
+   - Procure por "Sistema de Clãs carregado" no console
+
+2. Verifique se os scripts estão habilitados:
+   - No server.properties, certifique-se que não há
+     restrições de scripts
+
+3. Reinicie o servidor completamente
+
+═══════════════════════════════════════════════════════════

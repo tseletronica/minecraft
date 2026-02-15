@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Sistema de Clãs (Comandos)",
+    "description": "Sistema de clãs usando comandos e functions",
+    "uuid": "f1e2d3c4-b5a6-7890-1234-567890abcdef",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 19, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "e2d3c4b5-a6f7-8901-2345-67890abcdef1",
+      "version": [1, 0, 0]
+    }
+  ]
+}

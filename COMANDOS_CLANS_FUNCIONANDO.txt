@@ -1,0 +1,137 @@
+═══════════════════════════════════════════════════════════
+    SISTEMA DE CLÃS - COMANDOS QUE FUNCIONAM ✅
+═══════════════════════════════════════════════════════════
+
+✅ SISTEMA FUNCIONANDO! SophiaBlocks271 está no clã RED!
+
+═══════════════════════════════════════════════════════════
+    ADICIONAR JOGADORES NOS CLÃS
+═══════════════════════════════════════════════════════════
+
+CLÃ RED (Vermelho):
+tag @a[name="NomeJogador"] add clan_red
+tag @a[name="NomeJogador"] remove clan_blue
+tag @a[name="NomeJogador"] remove clan_green
+tag @a[name="NomeJogador"] remove clan_yellow
+tellraw @a[name="NomeJogador"] {"rawtext":[{"text":"§c[RED] Você entrou no clã vermelho!"}]}
+
+CLÃ BLUE (Azul):
+tag @a[name="NomeJogador"] add clan_blue
+tag @a[name="NomeJogador"] remove clan_red
+tag @a[name="NomeJogador"] remove clan_green
+tag @a[name="NomeJogador"] remove clan_yellow
+tellraw @a[name="NomeJogador"] {"rawtext":[{"text":"§9[BLUE] Você entrou no clã azul!"}]}
+
+CLÃ GREEN (Verde):
+tag @a[name="NomeJogador"] add clan_green
+tag @a[name="NomeJogador"] remove clan_red
+tag @a[name="NomeJogador"] remove clan_blue
+tag @a[name="NomeJogador"] remove clan_yellow
+tellraw @a[name="NomeJogador"] {"rawtext":[{"text":"§a[GREEN] Você entrou no clã verde!"}]}
+
+CLÃ YELLOW (Amarelo):
+tag @a[name="NomeJogador"] add clan_yellow
+tag @a[name="NomeJogador"] remove clan_red
+tag @a[name="NomeJogador"] remove clan_blue
+tag @a[name="NomeJogador"] remove clan_green
+tellraw @a[name="NomeJogador"] {"rawtext":[{"text":"§e[YELLOW] Você entrou no clã amarelo!"}]}
+
+═══════════════════════════════════════════════════════════
+    VER QUEM ESTÁ EM CADA CLÃ
+═══════════════════════════════════════════════════════════
+
+say === MEMBROS DOS CLÃS ===
+execute as @a[tag=clan_red] run say §c[RED] @s
+execute as @a[tag=clan_blue] run say §9[BLUE] @s
+execute as @a[tag=clan_green] run say §a[GREEN] @s
+execute as @a[tag=clan_yellow] run say §e[YELLOW] @s
+
+═══════════════════════════════════════════════════════════
+    MOSTRAR CLÃ NA LATERAL DA TELA (SCOREBOARD)
+═══════════════════════════════════════════════════════════
+
+CONFIGURAR (digite uma vez):
+scoreboard objectives add clan dummy "§6Clã"
+scoreboard objectives setdisplay sidebar clan
+
+ATUALIZAR JOGADORES:
+execute as @a[tag=clan_red] run scoreboard players set @s clan 1
+execute as @a[tag=clan_blue] run scoreboard players set @s clan 2
+execute as @a[tag=clan_green] run scoreboard players set @s clan 3
+execute as @a[tag=clan_yellow] run scoreboard players set @s clan 4
+
+═══════════════════════════════════════════════════════════
+    DAR ITENS ESPECIAIS PARA CADA CLÃ
+═══════════════════════════════════════════════════════════
+
+DAR ESPADA DE DIAMANTE PARA CLÃ RED:
+give @a[tag=clan_red] diamond_sword 1
+
+DAR ARMADURA PARA CLÃ BLUE:
+give @a[tag=clan_blue] diamond_chestplate 1
+
+DAR COMIDA PARA CLÃ GREEN:
+give @a[tag=clan_green] golden_apple 5
+
+DAR BLOCOS PARA CLÃ YELLOW:
+give @a[tag=clan_yellow] tnt 10
+
+═══════════════════════════════════════════════════════════
+    DAR EFEITOS PARA CADA CLÃ
+═══════════════════════════════════════════════════════════
+
+CLÃ RED - Força:
+effect @a[tag=clan_red] strength 999999 0 true
+
+CLÃ BLUE - Velocidade:
+effect @a[tag=clan_blue] speed 999999 0 true
+
+CLÃ GREEN - Regeneração:
+effect @a[tag=clan_green] regeneration 999999 0 true
+
+CLÃ YELLOW - Resistência:
+effect @a[tag=clan_yellow] resistance 999999 0 true
+
+═══════════════════════════════════════════════════════════
+    TELEPORTAR CLÃS PARA BASES
+═══════════════════════════════════════════════════════════
+
+BASE RED (exemplo: x=100 y=64 z=100):
+tp @a[tag=clan_red] 100 64 100
+
+BASE BLUE (exemplo: x=-100 y=64 z=100):
+tp @a[tag=clan_blue] -100 64 100
+
+BASE GREEN (exemplo: x=100 y=64 z=-100):
+tp @a[tag=clan_green] 100 64 -100
+
+BASE YELLOW (exemplo: x=-100 y=64 z=-100):
+tp @a[tag=clan_yellow] -100 64 -100
+
+═══════════════════════════════════════════════════════════
+    ANUNCIAR QUANDO ALGUÉM ENTRA NO CLÃ
+═══════════════════════════════════════════════════════════
+
+tellraw @a {"rawtext":[{"text":"§c[RED] "},{"selector":"@a[tag=clan_red]"},{"text":" §7entrou no clã vermelho!"}]}
+
+═══════════════════════════════════════════════════════════
+    REMOVER JOGADOR DE TODOS OS CLÃS
+═══════════════════════════════════════════════════════════
+
+tag @a[name="NomeJogador"] remove clan_red
+tag @a[name="NomeJogador"] remove clan_blue
+tag @a[name="NomeJogador"] remove clan_green
+tag @a[name="NomeJogador"] remove clan_yellow
+tellraw @a[name="NomeJogador"] {"rawtext":[{"text":"§7Você saiu de todos os clãs"}]}
+
+═══════════════════════════════════════════════════════════
+    CONTAR MEMBROS DE CADA CLÃ
+═══════════════════════════════════════════════════════════
+
+scoreboard objectives add clan_count dummy "Membros"
+execute as @a[tag=clan_red] run scoreboard players add RED clan_count 1
+execute as @a[tag=clan_blue] run scoreboard players add BLUE clan_count 1
+execute as @a[tag=clan_green] run scoreboard players add GREEN clan_count 1
+execute as @a[tag=clan_yellow] run scoreboard players add YELLOW clan_count 1
+
+═══════════════════════════════════════════════════════════

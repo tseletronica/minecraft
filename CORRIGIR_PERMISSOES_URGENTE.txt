@@ -1,0 +1,53 @@
+===== CORRIGIR PERMISSOES - JOGADORES NAO CONSEGUEM MINERAR =====
+
+PROBLEMA: Jogadores nao conseguem minerar, colocar blocos, atacar = estao como VISITOR
+
+===== SOLUCAO RAPIDA: DAR PERMISSAO MEMBER =====
+
+Para cada jogador que estiver online, execute no console:
+
+permission set SophiaBlocks271 member
+permission set SerafimM2025 member
+permission set IdleNormal81046 member
+permission set SixNevada63735 member
+
+OU para todos de uma vez:
+
+permission set @a member
+
+===== VERIFICAR SE FUNCIONOU =====
+
+permission list
+
+Deve mostrar todos os jogadores como "member" ou "operator"
+
+===== SOLUCAO PERMANENTE =====
+
+O problema e que o mundo foi criado com restricoes. Opcoes:
+
+OPCAO 1 - Dar OP para todos (nao recomendado):
+op SophiaBlocks271
+op SerafimM2025
+etc...
+
+OPCAO 2 - Criar mundo novo SEM restricoes:
+1. Abra o Minecraft (cliente)
+2. Crie um mundo novo
+3. ANTES de criar, va em Configuracoes do Mundo
+4. Desative "Somente Convite" 
+5. Ative "Beta APIs" nos Experimentos
+6. Crie o mundo
+7. Copie para worlds/ do servidor
+
+OPCAO 3 - Usar comando no console toda vez que alguem entrar:
+permission set <nome> member
+
+===== TESTE RAPIDO =====
+
+Execute agora no console:
+
+permission set @a member
+
+Depois peca para os jogadores testarem minerar/colocar blocos.
+
+===== FIM =====

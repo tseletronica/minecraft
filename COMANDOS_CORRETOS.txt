@@ -1,0 +1,50 @@
+===== COMANDOS CORRETOS PARA BEDROCK DEDICATED SERVER =====
+
+ERRO: O comando "permission" nao existe no Bedrock!
+
+===== SOLUCAO 1: DAR OP (TEMPORARIO) =====
+
+Para dar permissoes completas:
+
+op SophiaBlocks271
+op SerafimM2025
+op IdleNormal81046
+op SixNevada63735
+
+Ou para todos online:
+op @a
+
+===== SOLUCAO 2: USAR ALLOWLIST =====
+
+1. No server.properties, mude:
+   allow-list=true
+
+2. Adicione jogadores no allowlist.json
+
+3. Reinicie o servidor
+
+===== SOLUCAO 3: CRIAR MUNDO NOVO (RECOMENDADO) =====
+
+O problema e que o mundo tem restricoes no level.dat.
+A unica forma de corrigir permanentemente e criar um mundo novo.
+
+===== TESTE RAPIDO =====
+
+Execute agora:
+
+op SophiaBlocks271
+
+Peca para ela testar minerar/colocar blocos.
+Se funcionar, o problema e permissao mesmo.
+
+===== SOLUCAO DEFINITIVA =====
+
+Voce vai precisar:
+1. Criar um mundo novo no Minecraft (cliente)
+2. SEM restricoes, SEM "Somente Convite"
+3. COM "Beta APIs" ativado
+4. Exportar e copiar para o servidor
+
+Ou dar OP para todos os jogadores (nao e ideal mas funciona).
+
+===== FIM =====

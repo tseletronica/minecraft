@@ -10,14 +10,8 @@
 # World data (Can be large)
 worlds/
 
-# Specific server files
-valid_known_packs.json
+# Specific server files (temporary or generated)
 packet-statistics.txt
 packetlimitconfig.json
 profanity_filter.wlist
-release-notes.txt
 stdin.txt
-
-# Keep our behavior pack
-!behavior_packs/clan_system/
-!behavior_packs/clan_system/**/*

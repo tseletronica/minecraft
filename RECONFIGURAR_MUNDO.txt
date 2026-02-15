@@ -1,0 +1,77 @@
+===== RECONFIGURAR MUNDO - REMOVER RESTRICOES =====
+
+Execute estes comandos no console do servidor para reconfigurar o mundo:
+
+===== PASSO 1: HABILITAR PERMISSOES =====
+
+gamerule sendcommandfeedback true
+gamerule commandblockoutput true
+
+===== PASSO 2: DESABILITAR RESTRICOES =====
+
+gamerule pvp true
+gamerule showcoordinates true
+
+===== PASSO 3: VERIFICAR CONFIGURACOES =====
+
+Para ver todas as gamerules:
+gamerule
+
+Procure por:
+- pvp = true
+- sendcommandfeedback = true
+
+===== PASSO 4: TENTAR FORCAR PERMISSOES VIA COMANDO =====
+
+Para cada jogador online:
+permission set @a member
+
+===== SE AINDA NAO FUNCIONAR =====
+
+O problema esta no arquivo level.dat (configuracoes do mundo).
+Esse arquivo e binario e nao pode ser editado facilmente.
+
+SOLUCAO DEFINITIVA:
+
+1. PARAR o servidor
+
+2. CRIAR MUNDO NOVO no Minecraft (cliente):
+   - Abra o Minecraft
+   - Criar Novo Mundo
+   - Nome: "Bedrock level" (mesmo nome)
+   - Modo: Sobrevivencia
+   - Dificuldade: Dificil
+   - IMPORTANTE: Nao ative "Somente Convite"
+   - IMPORTANTE: Nao ative restricoes de PvP
+   - Experimentos: Ative "Beta APIs"
+   - Criar Mundo
+
+3. EXPORTAR o mundo:
+   - Entre no mundo
+   - Pause (ESC)
+   - Configuracoes
+   - Jogo
+   - Exportar Mundo
+   - Salve em algum lugar
+
+4. SUBSTITUIR no servidor:
+   - Apague: worlds/Bedrock level
+   - Extraia o mundo exportado
+   - Copie para: worlds/Bedrock level
+
+5. INICIAR o servidor
+
+Todos os jogadores vao poder minerar, colocar blocos e atacar normalmente.
+
+===== ALTERNATIVA RAPIDA (GAMBIARRA) =====
+
+Dar OP para todos os jogadores:
+
+op SophiaBlocks271
+op SerafimM2025
+op IdleNormal81046
+op SixNevada63735
+
+Mas isso da poderes de admin para todos (nao recomendado).
+
+===== FIM =====

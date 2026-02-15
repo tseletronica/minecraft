@@ -1,0 +1,128 @@
+===== CRIAR MUNDO NOVO - PASSO A PASSO =====
+
+OBJETIVO: Criar um mundo SEM restricoes, COM Beta APIs ativado
+
+===== PASSO 1: PARAR O SERVIDOR =====
+
+1. Pare o servidor Bedrock
+2. Aguarde fechar completamente
+
+===== PASSO 2: FAZER BACKUP (IMPORTANTE!) =====
+
+1. Copie a pasta: worlds/Bedrock level
+2. Cole em outro lugar como backup
+3. Renomeie para: Bedrock level BACKUP
+
+===== PASSO 3: ABRIR MINECRAFT (CLIENTE) =====
+
+1. Abra o Minecraft Bedrock no seu PC/Console
+2. Va em "Jogar"
+3. Clique em "Criar Novo Mundo"
+
+===== PASSO 4: CONFIGURAR O MUNDO =====
+
+CONFIGURACOES BASICAS:
+- Nome do Mundo: Bedrock level
+- Modo de Jogo: Sobrevivencia
+- Dificuldade: Dificil
+
+CONFIGURACOES IMPORTANTES:
+- Trapacas: ATIVADO (importante!)
+- Mostrar Coordenadas: Ativado (opcional)
+- Fogo se Espalha: Ativado
+- TNT Explode: Ativado
+- Dano por Queda: Ativado
+- Dano por Fogo: Ativado
+- Dano por Afogamento: Ativado
+
+MULTIPLAYER:
+- Jogo Multiplayer: ATIVADO
+- Somente Convite: DESATIVADO (IMPORTANTE!)
+- Permissao de Visitante: Membro (IMPORTANTE!)
+- Permissao Padrao: Membro (IMPORTANTE!)
+
+EXPERIMENTOS (MUITO IMPORTANTE!):
+- Beta APIs: ATIVADO ✓
+- Upcoming Creator Features: Ativado (opcional)
+
+===== PASSO 5: CRIAR E ENTRAR NO MUNDO =====
+
+1. Clique em "Criar"
+2. Aguarde o mundo carregar
+3. Entre no mundo
+
+===== PASSO 6: EXPORTAR O MUNDO =====
+
+1. Aperte ESC (Pause)
+2. Va em "Configuracoes"
+3. Role ate o final
+4. Clique em "Exportar Mundo"
+5. Escolha um local para salvar (Desktop, por exemplo)
+6. Aguarde a exportacao
+7. Anote onde salvou o arquivo .mcworld
+
+===== PASSO 7: EXTRAIR O MUNDO =====
+
+1. O arquivo .mcworld e um ZIP
+2. Renomeie de .mcworld para .zip
+3. Extraia o arquivo ZIP
+4. Dentro vai ter uma pasta com o mundo
+
+===== PASSO 8: COPIAR PARA O SERVIDOR =====
+
+1. APAGUE a pasta: worlds/Bedrock level (do servidor)
+2. COPIE a pasta extraida do mundo
+3. COLE em: worlds/
+4. RENOMEIE para: Bedrock level
+
+===== PASSO 9: VERIFICAR BEHAVIOR PACK =====
+
+1. Abra: worlds/Bedrock level/world_behavior_packs.json
+2. Deve conter:
+
+[
+    {
+        "pack_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "version": [1, 0, 0]
+    }
+]
+
+Se nao tiver, adicione manualmente.
+
+===== PASSO 10: INICIAR O SERVIDOR =====
+
+1. Inicie o servidor
+2. Aguarde carregar
+3. Procure no log: "Pack Stack - [00] Sistema de Clãs"
+4. Procure: "[CLANS] Sistema carregado com sucesso!"
+
+===== PASSO 11: TESTAR =====
+
+1. Conecte um jogador
+2. Escolha um clan
+3. TESTE:
+   - Minerar blocos ✓
+   - Colocar blocos ✓
+   - Atacar mobs ✓
+   - Atacar outro jogador (clan diferente) ✓
+   - Atacar jogador do mesmo clan (deve bloquear) ✓
+
+===== SE DER ERRO =====
+
+Se o behavior pack nao carregar:
+1. Copie a pasta: behavior_packs/clan_system
+2. Cole em: worlds/Bedrock level/behavior_packs/
+3. Reinicie o servidor
+
+===== FIM =====
+
+RESUMO:
+1. Parar servidor
+2. Backup do mundo atual
+3. Criar mundo novo no Minecraft
+4. Configurar: Trapacas ON, Somente Convite OFF, Beta APIs ON
+5. Exportar mundo
+6. Extrair .mcworld
+7. Substituir worlds/Bedrock level
+8. Iniciar servidor
+9. Testar!
