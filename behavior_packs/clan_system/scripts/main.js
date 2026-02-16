@@ -308,7 +308,11 @@ world.afterEvents.playerSpawn.subscribe((event) => {
     // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)
     system.runTimeout(() => {
         try {
-            player.runCommandAsync('permission set @s member').catch(() => {});
+            if (player.runCommandAsync) {
+                player.runCommandAsync('permission set @s member').catch(() => {});
+            } else if (player.runCommand) {
+                player.runCommand('permission set @s member');
+            }
         } catch (e) {}
     }, 5);
     
@@ -1210,36 +1214,27 @@ world.beforeEvents.chatSend.subscribe((event) => {
             player.sendMessage(`§7[DEBUG] Tags ANTES: ${tagsBefore.join(', ')}`);
             console.warn(`[CLANS] Tags ANTES para ${targetName}: ${target.getTags().join(', ')}`);
             
-            // Usar comandos nativos do Minecraft (mais confiável)
-            system.run(async () => {
+            // Usar métodos nativos do Minecraft (mais confiáveis)
+            system.run(() => {
                 try {
-                    // Remover todas as tags de clã usando comandos
+                    // Remover todas as tags de clã antigas
                     for (const key in CLANS) {
-                        const oldTag = CLANS[key].tag;
-                        await target.runCommandAsync(`tag @s remove ${oldTag}`).catch(() => {});
-                        console.warn(`[CLANS] Comando: tag @s remove ${oldTag}`);
+                        if (target.hasTag(CLANS[key].tag)) target.removeTag(CLANS[key].tag);
                     }
                     
-                    // Adicionar nova tag usando comando
-                    await target.runCommandAsync(`tag @s add ${newClan.tag}`);
-                    console.warn(`[CLANS] Comando: tag @s add ${newClan.tag}`);
-                    
-                    // Atualizar nameTag
+                    // Adicionar nova tag e atualizar nome
+                    target.addTag(newClan.tag);
                     target.nameTag = `${newClan.color}[${newClan.name}]\n${target.name}`;
-                    
-                    // DEBUG: Mostrar tags depois
-                    const tagsAfter = target.getTags().filter(t => t.includes('clan'));
-                    player.sendMessage(`§7[DEBUG] Tags DEPOIS: ${tagsAfter.join(', ')}`);
-                    console.warn(`[CLANS] Tags DEPOIS para ${targetName}: ${target.getTags().join(', ')}`);
                     
                     player.sendMessage(`§a[OK] ${targetName} -> ${newClan.color}${newClan.name}`);
                     target.sendMessage(`§aVoce agora e do cla ${newClan.color}${newClan.name}§a!`);
+                    
+                    console.warn(`[CLANS] ${targetName} movido para ${clanKey} com sucesso.`);
                 } catch (error) {
                     player.sendMessage(`§c[ERRO] Falha ao mudar cla: ${error}`);
-                    console.warn(`[CLANS] ERRO: ${error}`);
+                    console.warn(`[CLANS] ERRO ao mudar cla: ${error}`);
                 }
             });
-            
             return;
         }
 
