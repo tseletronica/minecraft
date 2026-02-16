@@ -3,35 +3,95 @@ import { ActionFormData } from '@minecraft/server-ui';
 import { SHOP_CATEGORIES } from './config.js';
 
 // Configuração dos clãs e coordenadas das bases (Onde os totens SEMPRE devem estar)
+// Função para carregar bases salvas (PERSISTÊNCIA)
+function loadClanBase(clanKey, defaultBase, defaultDim) {
+    try {
+        const savedData = world.getDynamicProperty(`clan_base_${clanKey}`);
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            return { base: data.base, dimension: data.dimension };
+        }
+    } catch (e) {}
+    return { base: defaultBase, dimension: defaultDim || 'overworld' };
+}
+
+// Configuração dos clãs (Carrega do salvo ou usa padrão)
 const CLANS = {
     red: { 
         name: 'RED', 
         color: '§c', 
         tag: 'clan_red',
-        base: { x: 1000, y: 100, z: 1000 }
+        ...loadClanBase('red', { x: 42, y: 43, z: -225 }, 'nether')
     },
     blue: { 
         name: 'BLUE', 
         color: '§9', 
         tag: 'clan_blue',
-        base: { x: -1000, y: 100, z: 1000 }
+        ...loadClanBase('blue', { x: -678, y: 24, z: 631 }, 'overworld')
     },
     green: { 
         name: 'GREEN', 
         color: '§a', 
         tag: 'clan_green',
-        base: { x: -1000, y: 100, z: -1000 }
+        ...loadClanBase('green', { x: -927, y: -17, z: -976 }, 'overworld')
     },
     yellow: { 
         name: 'YELLOW', 
         color: '§e', 
         tag: 'clan_yellow',
-        base: { x: 1000, y: 100, z: -1000 }
+        ...loadClanBase('yellow', { x: -483, y: 170, z: 509 }, 'overworld')
     }
 };
 
-const SHOP_LOCATION = { x: -43, y: 67, z: 54 }; // Local da Loja do Clã
-const CLAN_BASE_RADIUS = 50; // Raio de proteção do totem
+//------------------------------------------
+// CONFIGURAÇÃO DOS TOTENS (Manutenção Automática)
+//------------------------------------------
+const TOTEM_CONFIG = [
+    {
+        id: 'red_totem',
+        location: CLANS.red.base,
+        dimension: CLANS.red.dimension || 'nether',
+        tag: 'totem_red',
+        name: '§c§lTOTEM RED',
+        typeId: 'clans:totem_red',
+        aura: 'minecraft:redstone_ore_dust_particle'
+    },
+    {
+        id: 'blue_totem',
+        location: CLANS.blue.base,
+        dimension: CLANS.blue.dimension || 'overworld',
+        tag: 'totem_blue',
+        name: '§9§lTOTEM BLUE',
+        typeId: 'clans:totem_blue',
+        aura: 'minecraft:conduit_particle'
+    },
+    {
+        id: 'green_totem',
+        location: CLANS.green.base,
+        dimension: CLANS.green.dimension || 'overworld',
+        tag: 'totem_green',
+        name: '§a§lTOTEM GREEN',
+        typeId: 'clans:totem_green',
+        aura: 'minecraft:villager_happy'
+    },
+    {
+        id: 'yellow_totem',
+        location: CLANS.yellow.base,
+        dimension: CLANS.yellow.dimension || 'overworld',
+        tag: 'totem_yellow',
+        name: '§e§lTOTEM YELLOW',
+        typeId: 'clans:totem_yellow',
+        aura: 'minecraft:totem_particle'
+    },
+    {
+        id: 'shop',
+        location: { x: -43, y: 67, z: 54 },
+        dimension: 'overworld',
+        tag: 'clan_shop',
+        name: '§6§lLOJA DO CLÃ',
+        typeId: 'minecraft:npc'
+    }
+];
 
 //------------------------------------------
 // UTILITÁRIOS
@@ -95,9 +155,14 @@ world.afterEvents.entityHitEntity.subscribe((event) => {
 });
 
 // Impedir dano entre membros do mesmo clã (Friendly Fire OFF)
-world.beforeEvents.entityHurt.subscribe((event) => {
-    const victim = event.hurtEntity;
-    let damager = event.damageSource.damagingEntity;
+// Tentar inscrever no evento de dano (Suporta entityDamage ou entityHurt dependendo da versao beta)
+const damageNotifier = world.beforeEvents.entityDamage || world.beforeEvents.entityHurt;
+
+if (damageNotifier) {
+    damageNotifier.subscribe((event) => {
+        // PADRÃO 1.14.0-BETA / 1.13.0
+        const victim = event.entity || event.hurtEntity;
+        let damager = event.damageSource.damagingEntity;
 
     // PROTEÇÃO TOTAL DO TOTEM (Não pode ser quebrado)
     if (victim.hasTag('totem_npc')) {
@@ -218,6 +283,7 @@ world.beforeEvents.entityHurt.subscribe((event) => {
         console.warn(`[CLANS] Allowed damage: ${damager.name} -> ${victim.name} (different clans)`);
     }
 });
+}
 
 // Inicialização
 console.warn('[CLANS] Script main.js carregado');
@@ -340,66 +406,186 @@ function updatePlayerNames() {
 }
 
 //------------------------------------------
-// EFEITOS PASSIVOS (VISÃO NOTURNA - CLÃ GREEN E DEFESA NOS TOTENS)
+// EFEITOS PASSIVOS DOS CLÃS
 //------------------------------------------
 system.runInterval(() => {
     try {
         const allPlayers = world.getAllPlayers();
         
-        // VISÃO NOTURNA (CLÃ GREEN)
-        const greenPlayers = allPlayers.filter(p => p.hasTag(CLANS.green.tag));
-        for (const player of greenPlayers) {
-            // Verificar se já tem o efeito e quanto tempo falta
-            const effect = player.getEffect('night_vision');
-            
-            // Se não tiver efeito OU se faltar menos de 220 ticks (11 segundos), reaplicar
-            if (!effect || effect.duration < 220) {
-                // Aplica por 20 minutos (24000 ticks) para evitar ficar reaplicando toda hora
-                // Isso deve resolver o "piscar" da tela
-                player.addEffect('night_vision', 24000, {
-                    amplifier: 0,
-                    showParticles: false
-                });
-            }
-        }
-        
-        // DEFESA NOS TOTENS (TODOS OS CLÃS) - Resistance 255
+        // EFETOS PASSIVOS POR CLÃ
         for (const player of allPlayers) {
+            // 🟢 CLÃ GREEN: Visão Noturna
+            if (player.hasTag(CLANS.green.tag)) {
+                const nv = player.getEffect('night_vision');
+                if (!nv || nv.duration < 220) player.addEffect('night_vision', 24000, { showParticles: false });
+            }
+
+            // 🔵 CLÃ BLUE: Respiração Aquática + Visão Submersa
+            if (player.hasTag(CLANS.blue.tag)) {
+                // Respiração
+                const wb = player.getEffect('water_breathing');
+                if (!wb || wb.duration < 220) player.addEffect('water_breathing', 24000, { showParticles: false });
+                
+                // Visão Submersa (Night Vision na água)
+                const isUnderwater = player.isInWater;
+                const nv = player.getEffect('night_vision');
+                if (isUnderwater) {
+                    if (!nv || nv.duration < 220) player.addEffect('night_vision', 24000, { showParticles: false });
+                } else if (nv && nv.duration > 20000) { // Remover se não estiver na água (e for o nosso efeito longo)
+                    player.removeEffect('night_vision');
+                }
+            }
+
+            // 🔴 CLÃ RED: Resistência ao Fogo
+            if (player.hasTag(CLANS.red.tag)) {
+                const fr = player.getEffect('fire_resistance');
+                if (!fr || fr.duration < 220) player.addEffect('fire_resistance', 24000, { showParticles: false });
+            }
+
+            // --- DEFESA NOS TOTENS (TODOS OS CLÃS) ---
             let nearOwnTotem = false;
-            
             for (const clanKey in CLANS) {
                 const clan = CLANS[clanKey];
-                if (player.hasTag(clan.tag) && isInClanBase(player, clanKey)) {
+                if (player.hasTag(clan.tag) && isInBase(player, clan.base, clan.dimension || 'overworld')) {
                     nearOwnTotem = true;
-                    
-                    const resistance = player.getEffect('resistance');
-                    
-                    // Aplicar Resistance 255 (Invulnerabilidade)
-                    if (!resistance || resistance.amplifier < 250 || resistance.duration < 220) {
-                        try {
-                            player.addEffect('resistance', 300, {
-                                amplifier: 255, 
-                                showParticles: false 
-                            });
-                            console.warn(`[CLANS] ✓ APPLIED Totem Invulnerability to ${player.name}`);
-                        } catch (e) {}
-                    }
+                    const res = player.getEffect('resistance');
+                    if (!res || res.amplifier < 250) player.addEffect('resistance', 300, { amplifier: 255, showParticles: false });
                     break;
                 }
             }
-            
             if (!nearOwnTotem) {
-                const resistance = player.getEffect('resistance');
-                if (resistance && resistance.amplifier >= 250) {
-                    player.removeEffect('resistance');
-                    console.warn(`[CLANS] ✖ REMOVED Totem Invulnerability from ${player.name}`);
+                const res = player.getEffect('resistance');
+                if (res && res.amplifier >= 250) player.removeEffect('resistance');
+            }
+        }
+    } catch (error) {}
+}, 100);
+
+// Helper rápido para base
+function isInBase(player, base, dimensionId) {
+    if (player.dimension.id !== dimensionId) return false;
+    const dist = Math.sqrt((player.location.x - base.x)**2 + (player.location.z - base.z)**2);
+    return dist < 20;
+}
+
+//------------------------------------------
+// CANCELAMENTO DE DANOS ESPECÍFICOS
+//------------------------------------------
+world.beforeEvents.entityHurt.subscribe((event) => {
+    const player = event.hurtEntity;
+    if (player.typeId !== 'minecraft:player') return;
+
+    // 🟡 CLÃ YELLOW: Imunidade a Dano de Queda
+    if (player.hasTag(CLANS.yellow.tag) && event.damageSource.cause === 'fall') {
+        event.cancel = true;
+        return;
+    }
+
+    // 🟢 CLÃ GREEN: Imunidade a Monstros (Exceto Bosses)
+    if (player.hasTag(CLANS.green.tag)) {
+        const source = event.damageSource.damagingEntity;
+        if (source) {
+            const bosses = ['minecraft:ender_dragon', 'minecraft:wither', 'minecraft:warden', 'minecraft:elder_guardian'];
+            if (!bosses.includes(source.typeId) && (source.hasTag('mob') || source.typeId.includes('minecraft:'))) {
+                // Se for um mob hostil comum (Zombie, Skeleton, Slime, etc.)
+                const hostileMobs = [
+                    'minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider',
+                    'minecraft:slime', 'minecraft:enderman', 'minecraft:witch', 'minecraft:husk',
+                    'minecraft:stray', 'minecraft:drowned', 'minecraft:phantom', 'minecraft:ghast',
+                    'minecraft:magma_cube', 'minecraft:blaze', 'minecraft:piglin', 'minecraft:hoglin'
+                ];
+                if (hostileMobs.includes(source.typeId) || source.typeId.includes('zombie') || source.typeId.includes('skeleton')) {
+                    event.cancel = true;
+                    return;
                 }
             }
         }
-    } catch (error) {
-        console.warn('[CLANS] Erro ao aplicar efeitos:', error);
     }
-}, 200); // Roda a cada 10 segundos (200 ticks)
+});
+
+//------------------------------------------
+// MANUTENÇÃO AUTOMÁTICA DE TOTENS (Corrige duplicados e spawn)
+//------------------------------------------
+system.runInterval(() => {
+    try {
+        for (const config of TOTEM_CONFIG) {
+            const dim = world.getDimension(config.dimension);
+            if (!dim) continue;
+
+            const targetLoc = config.location;
+
+            // Encontrar Totems próximos
+            const nearbyEntities = dim.getEntities({
+                typeId: config.typeId,
+                location: targetLoc,
+                maxDistance: 4
+            });
+
+            let validEntity = null;
+            
+            // 1. Filtrar e remover duplicados/inválidos
+            for (const entity of nearbyEntities) {
+                // Critério: Tem a tag certa?
+                const isCorrectTag = entity.hasTag(config.tag);
+                
+                // Se JÁ temos um válido, este é duplicado -> LIXO
+                // Se NÃO tem a tag certa -> LIXO
+                if (validEntity || !isCorrectTag) {
+                    system.run(() => {
+                        try {
+                            entity.remove();
+                        } catch(e) {}
+                    });
+                } else {
+                    validEntity = entity;
+                }
+            }
+
+            // 2. Se não tem entidade válida, SPAWNAR
+            if (!validEntity) {
+                // console.warn(`[CLANS] Totem ${config.id} ausente. Spawnando...`);
+                system.run(() => {
+                    try {
+                        const newEntity = dim.spawnEntity(config.typeId, {
+                            x: targetLoc.x + 0.5,
+                            y: targetLoc.y,
+                            z: targetLoc.z + 0.5
+                        });
+                        newEntity.nameTag = config.name;
+                        newEntity.addTag(config.tag);
+                        newEntity.addTag('totem_npc'); 
+                        
+                        // Efeitos permanentes (Imobilidade e Invulnerabilidade)
+                        newEntity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
+                        newEntity.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
+                        newEntity.addEffect('weakness', 20000000, { amplifier: 255, showParticles: false });
+                    } catch(e) {}
+                });
+            } else {
+                // 3. Se JÁ EXISTE, garantir posição e status
+                const currentPos = validEntity.location;
+                if (Math.abs(currentPos.x - (targetLoc.x + 0.5)) > 0.5 || 
+                    Math.abs(currentPos.y - targetLoc.y) > 0.5 || 
+                    Math.abs(currentPos.z - (targetLoc.z + 0.5)) > 0.5) {
+                        
+                    system.run(() => {
+                        validEntity.teleport({
+                            x: targetLoc.x + 0.5,
+                            y: targetLoc.y,
+                            z: targetLoc.z + 0.5
+                        }, { dimension: dim });
+                    });
+                }
+                
+                if (validEntity.nameTag !== config.name) validEntity.nameTag = config.name;
+                validEntity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
+                validEntity.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
+            }
+        }
+    } catch(e) {
+        console.warn(`[CLANS] Erro no loop de manutencao: ${e}`);
+    }
+}, 600); // Roda a cada 30 segundos
 
 // Comando para verificar clã
 world.beforeEvents.chatSend.subscribe((event) => {
@@ -431,6 +617,14 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        if (msgLow === '!loja' || msgLow === '!shop') {
+            event.cancel = true;
+            system.run(() => {
+                showShopWelcomeMenu(player);
+            });
+            return;
+        }
+
         if (message.startsWith('! ')) { // Chat do clã
             event.cancel = true;
             let content = message.substring(1).trim();
@@ -443,6 +637,102 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
     
+        if (message.startsWith('!saldo') || message.startsWith('!balance')) {
+            event.cancel = true;
+            const objective = world.scoreboard.getObjective('coins');
+            const score = objective?.getScore(player) ?? 0;
+            
+            player.sendMessage(`§e--------------------------------`);
+            player.sendMessage(`§fNome: §b${player.name}`);
+            player.sendMessage(`§fID: §7${player.id}`);
+            player.sendMessage(`§6Saldo (Script): §a${score}`);
+            player.sendMessage(`§e--------------------------------`);
+            console.warn(`[DEBUG] !saldo: ${player.name} (${player.id}) = ${score}`);
+            return;
+        }
+
+        // COMANDO: PAGAR / DAR MOEDAS (Player x Player)
+        // Uso: !darmoedas "Nome" valor
+        if (message.startsWith('!darmoedas') || message.startsWith('!pagar') || message.startsWith('!pay')) {
+            event.cancel = true;
+            
+            const args = message.match(/"([^"]+)"|'([^']+)'|(\S+)/g);
+            if (!args || args.length < 3) {
+                player.sendMessage('§cUso incorreto! Digite: !darmoedas "Nome do Jogador" valor');
+                return;
+            }
+
+            let targetName = args[1].replace(/"/g, '').replace(/'/g, ''); 
+            const amount = parseInt(args[2]);
+
+            if (isNaN(amount) || amount <= 0) {
+                player.sendMessage('§cValor invalido!');
+                return;
+            }
+
+            // Verificar saldo do pagador
+            const objective = world.scoreboard.getObjective('coins');
+            const balance = objective?.getScore(player) ?? 0;
+            
+            if (balance < amount) {
+                player.sendMessage(`§cVoce nao tem coins suficientes! Saldo: ${balance}`);
+                return;
+            }
+
+            // Procurar alvo
+            const targetPlayer = world.getAllPlayers().find(p => p.name === targetName);
+            if (!targetPlayer) {
+                player.sendMessage(`§cJogador "§f${targetName}§c" nao encontrado online!`);
+                return;
+            }
+
+            // Transação
+            if (objective) {
+                objective.addScore(player, -amount);
+                objective.addScore(targetPlayer, amount);
+                
+                player.sendMessage(`§aVoce enviou §e${amount} Coins §apara §f${targetName}§a.`);
+                targetPlayer.sendMessage(`§aVoce recebeu §e${amount} Coins §ade §f${player.name}§a.`);
+                console.warn(`[ECONOMIA] ${player.name} enviou ${amount} para ${targetName}`);
+            }
+            return;
+        }
+
+        // COMANDO ADMIN: CRIAR MOEDAS
+        // Uso: !addmoedas "Nome" valor
+        if (message.startsWith('!addmoedas') || message.startsWith('!addcoins')) {
+            event.cancel = true;
+            
+            if (!checkAdmin(player)) {
+                player.sendMessage('§cApenas admins podem criar moedas!');
+                return;
+            }
+
+            const args = message.match(/"([^"]+)"|'([^']+)'|(\S+)/g);
+            if (!args || args.length < 3) {
+                player.sendMessage('§cUso: !addmoedas "Nome" valor');
+                return;
+            }
+
+            let targetName = args[1].replace(/"/g, '').replace(/'/g, '');
+            const amount = parseInt(args[2]);
+
+            const targetPlayer = world.getAllPlayers().find(p => p.name === targetName);
+            if (!targetPlayer) {
+                player.sendMessage(`§cJogador "§f${targetName}§c" nao encontrado online!`);
+                return;
+            }
+
+            const objective = world.scoreboard.getObjective('coins');
+            if (objective) {
+                objective.addScore(targetPlayer, amount);
+                player.sendMessage(`§a[ADMIN] Voce adicionou §e${amount} Coins §apara §f${targetName}§a.`);
+                targetPlayer.sendMessage(`§aVoce recebeu §e${amount} Coins §ada administracao!`);
+                console.warn(`[ECONOMIA-ADMIN] ${player.name} criou ${amount} para ${targetName}`);
+            }
+            return;
+        }
+
     //------------------------------------------
     // TELEPORTE PARA BASE
     //------------------------------------------
@@ -484,10 +774,11 @@ world.beforeEvents.chatSend.subscribe((event) => {
         } catch (e) {}
         
         const base = playerClan.base;
+        const dimensionName = playerClan.dimension || 'overworld';
         
         // Teleportar o jogador
         system.run(() => {
-            player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension('overworld') });
+            player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension(dimensionName) });
             player.sendMessage(`${playerClan.color}[CLAN] §aVoce foi teleportado para a base ${playerClan.name}!`);
         });
     }
@@ -526,18 +817,206 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        // --- COMANDOS DE DEBUG (TOTENS) ---
+    if (msgLow.startsWith('!tpbase ')) {
+        event.cancel = true;
+        if (!checkAdmin(player)) return;
+        const clanKey = msgLow.split(' ')[1];
+        const clan = CLANS[clanKey];
+        if (!clan) {
+            player.sendMessage('§cClã inválido!');
+            return;
+        }
+        player.teleport(clan.base, { dimension: world.getDimension(clan.dimension || 'overworld') });
+        player.sendMessage(`§aTeleportado para a base do clã ${clanKey}`);
+        return;
+    }
+
+    if (msgLow === '!findtotems') {
+        event.cancel = true;
+        if (!checkAdmin(player)) return;
+        player.sendMessage('§e[DEBUG] Buscando totens no mundo...');
+        for (const config of TOTEM_CONFIG) {
+            const dim = world.getDimension(config.dimension);
+            const entities = dim.getEntities({ typeId: config.typeId });
+            player.sendMessage(`§7- ${config.id}: ${entities.length} encontrados em ${config.dimension} (${config.location.x}, ${config.location.y}, ${config.location.z})`);
+        }
+        return;
+    }
+
+    if (msgLow === '!spawntotems') {
+        event.cancel = true;
+        if (!checkAdmin(player)) return;
+        player.sendMessage('§e[DEBUG] Forçando spawn de todos os totens...');
+        maintenanceLoop();
+        player.sendMessage('§a[DEBUG] Manutenção executada.');
+        return;
+    }
+
+        // COMANDO ADMIN: DEFINIR BASE (!setbase red)
+        if (msgLow.startsWith('!setbase ')) {
+            event.cancel = true;
+            
+            if (!checkAdmin(player)) {
+                
+                player.sendMessage('§cApenas admins podem definir bases!');
+                return;
+            }
+
+            const args = msgLow.split(' ');
+            if (args.length < 2) {
+                player.sendMessage('§cUso: !setbase <red|blue|green|yellow>');
+                return;
+            }
+            
+            const clanKey = args[1].toLowerCase();
+            if (!CLANS[clanKey]) {
+                player.sendMessage('§cClã inválido! Use: red, blue, green, yellow');
+                return;
+            }
+
+            const newBase = {
+                x: Math.floor(player.location.x),
+                y: Math.floor(player.location.y),
+                z: Math.floor(player.location.z)
+            };
+            const newDim = player.dimension.id; // minecraft:overworld
+
+            // Salvar na memória do mundo (PERSISTÊNCIA)
+            const dataToSave = JSON.stringify({ base: newBase, dimension: newDim });
+            world.setDynamicProperty(`clan_base_${clanKey}`, dataToSave);
+            
+            // Atualizar tempo real
+            CLANS[clanKey].base = newBase;
+            CLANS[clanKey].dimension = newDim;
+            
+            // Atualizar Totem Config também se necessário (recarregar script idealmente, mas atualiza RAM)
+            const totem = TOTEM_CONFIG.find(t => t.id === `${clanKey}_totem`);
+            if (totem) {
+                totem.location = newBase;
+                totem.dimension = newDim.replace('minecraft:', '');
+            }
+
+            player.sendMessage(`§aBase do clã ${CLANS[clanKey].name} definida para: ${newBase.x}, ${newBase.y}, ${newBase.z} (${newDim})`);
+            console.warn(`[CLANS] Base ${clanKey} atualizada por ${player.name}`);
+            return;
+        }
+
         // ==========================================
         // COMANDOS DE ADMIN (CONSOLIDADOS AQUI)
         // ==========================================
+
+
         if (message === '!clean') {
             event.cancel = true;
             if (!checkAdmin(player)) return player.sendMessage('§cAcesso negado.');
-            const ov = world.getDimension('overworld');
-            player.sendMessage('§eLimpando NPCs...');
-            try { ov.runCommand(`kill @e[type=npc,tag=totem_npc]`); } catch(e) {}
-            try { ov.runCommand(`kill @e[type=npc,tag=clan_shop]`); } catch(e) {}
-            try { ov.runCommand(`kill @e[type=npc,name="§6§lLOJA DO CLÃ"]`); } catch(e) {}
-            system.runTimeout(maintenanceLoop, 40);
+            
+            player.sendMessage('§e[CLEAN] Buscando NPCs em um raio de 100 blocos...');
+            
+            try {
+                const npcs = player.dimension.getEntities({ 
+                    typeId: 'minecraft:npc',
+                    location: player.location,
+                    maxDistance: 100
+                });
+                
+                player.sendMessage(`§e[CLEAN] Encontrados ${npcs.length} NPCs`);
+                
+                let removed = 0;
+                for (const npc of npcs) {
+                    try {
+                        const loc = npc.location;
+                        player.sendMessage(`§7- Removendo: "${npc.nameTag}" em (${Math.floor(loc.x)}, ${Math.floor(loc.y)}, ${Math.floor(loc.z)})`);
+                        npc.remove();
+                        removed++;
+                    } catch(e) {
+                        player.sendMessage(`§c- Erro: ${e}`);
+                    }
+                }
+                
+                player.sendMessage(`§a[CLEAN] ${removed} NPCs removidos!`);
+                player.sendMessage(`§7Agora spawne um novo NPC manualmente com: /summon npc`);
+                
+            } catch(e) {
+                player.sendMessage(`§cErro: ${e}`);
+            }
+            return;
+        }
+        
+        if (message === '!cleanall') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return player.sendMessage('§cAcesso negado.');
+            
+            player.sendMessage('§e[CLEANALL] Iniciando limpeza automática...');
+            player.sendMessage('§7Você será teleportado para cada local de NPC');
+            
+            // Salvar posição original
+            const originalPos = player.location;
+            const originalDim = player.dimension;
+            
+            // Lista de locais onde tem NPCs
+            const locations = [
+                { dim: 'overworld', pos: CLANS.blue.base, name: 'Base BLUE' },
+                { dim: 'overworld', pos: CLANS.green.base, name: 'Base GREEN' },
+                { dim: 'overworld', pos: CLANS.yellow.base, name: 'Base YELLOW' },
+                { dim: 'nether', pos: CLANS.red.base, name: 'Base RED (Nether)' }
+            ];
+            
+            let currentIndex = 0;
+            let totalRemoved = 0;
+            
+            function cleanNextLocation() {
+                if (currentIndex >= locations.length) {
+                    // Terminou - voltar para posição original
+                    player.teleport(originalPos, { dimension: originalDim });
+                    player.sendMessage(`§a[CLEANALL] Concluído! ${totalRemoved} NPCs removidos`);
+                    return;
+                }
+                
+                const loc = locations[currentIndex];
+                const dim = world.getDimension(loc.dim);
+                
+                player.sendMessage(`§7[${currentIndex + 1}/${locations.length}] Limpando ${loc.name}...`);
+                
+                // Teleportar para o local
+                player.teleport(loc.pos, { dimension: dim });
+                
+                // Aguardar chunk carregar e limpar
+                system.runTimeout(() => {
+                    try {
+                        const npcs = dim.getEntities({
+                            typeId: 'minecraft:npc',
+                            location: loc.pos,
+                            maxDistance: 10
+                        });
+                        
+                        player.sendMessage(`§7  Encontrados ${npcs.length} NPCs`);
+                        
+                        // REMOVER TODOS os NPCs
+                        for (const npc of npcs) {
+                            try {
+                                npc.remove();
+                                totalRemoved++;
+                            } catch(e) {}
+                        }
+                        
+                        player.sendMessage(`§a  ${npcs.length} NPCs removidos`);
+                        
+
+                        
+                    } catch(e) {
+                        player.sendMessage(`§c  Erro: ${e}`);
+                    }
+                    
+                    // Próximo local
+                    currentIndex++;
+                    system.runTimeout(cleanNextLocation, 60); // 3 segundos entre cada local
+                    
+                }, 60); // 3 segundos para chunk carregar
+            }
+            
+            // Iniciar limpeza
+            cleanNextLocation();
             return;
         }
 
@@ -585,6 +1064,16 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        if (message === '!checkadmin') {
+            event.cancel = true;
+            const isAdmin = checkAdmin(player);
+            player.sendMessage('§e=== VERIFICACAO DE ADMIN ===');
+            player.sendMessage(`§7Status Admin: ${isAdmin ? '§aVERDADEIRO' : '§cFALSO'}`);
+            player.sendMessage(`§7Suas tags: §f${player.getTags().join(', ')}`);
+            player.sendMessage(`§7Para ser admin, adicione uma tag com: §f/tag @s add admin`);
+            return;
+        }
+
         if (message === '!debug') {
             event.cancel = true;
             if (!checkAdmin(player)) return;
@@ -612,19 +1101,117 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
         if (message.startsWith('!setclan ')) {
             event.cancel = true;
-            if (!checkAdmin(player)) return;
+            if (!checkAdmin(player)) {
+                player.sendMessage('§c[ERRO] Voce precisa ser Admin para usar este comando!');
+                return;
+            }
+            
             const args = message.match(/!setclan\s+("([^"]+)"|(\S+))\s+(\w+)/);
-            if (!args) return player.sendMessage('§cUso: !setclan "Nick" <cor>');
+            if (!args) {
+                player.sendMessage('§cUso correto: !setclan "Nick" <clan>');
+                player.sendMessage('§7Exemplo: !setclan "SerafimM2025" red');
+                player.sendMessage('§7Clans disponiveis: red, blue, green, yellow');
+                return;
+            }
+            
             const targetName = args[2] || args[3];
             const clanKey = args[4].toLowerCase();
-            if (!CLANS[clanKey]) return player.sendMessage('§cClã inválido.');
+            
+            if (!CLANS[clanKey]) {
+                player.sendMessage(`§c[ERRO] Cla "${clanKey}" invalido!`);
+                player.sendMessage('§7Clans disponiveis: red, blue, green, yellow');
+                return;
+            }
+            
             const target = world.getAllPlayers().find(p => p.name === targetName);
-            if (!target) return player.sendMessage('§cJogador não encontrado.');
+            if (!target) {
+                player.sendMessage(`§c[ERRO] Jogador "${targetName}" nao encontrado ou offline!`);
+                player.sendMessage('§7Jogadores online:');
+                world.getAllPlayers().forEach(p => player.sendMessage(`§7- ${p.name}`));
+                return;
+            }
+            
             const newClan = CLANS[clanKey];
             for (const key in CLANS) if (target.hasTag(CLANS[key].tag)) target.removeTag(CLANS[key].tag);
             target.addTag(newClan.tag);
             target.nameTag = `${newClan.color}[${newClan.name}]\n${target.name}`;
-            player.sendMessage(`§a${targetName} movido para ${newClan.name}.`);
+            
+            player.sendMessage(`§a[SUCESSO] ${targetName} foi movido para o cla ${newClan.color}${newClan.name}§a!`);
+            target.sendMessage(`§aVoce foi movido para o cla ${newClan.color}${newClan.name}§a!`);
+            return;
+        }
+
+        // COMANDO ALTERNATIVO: !moveclan (sintaxe mais simples)
+        if (message.startsWith('!moveclan ')) {
+            event.cancel = true;
+            
+            if (!checkAdmin(player)) {
+                player.sendMessage('§c[ERRO] Voce precisa ser Admin!');
+                return;
+            }
+            
+            // Sintaxe: !moveclan NomeDoJogador red
+            const parts = message.split(' ');
+            if (parts.length < 3) {
+                player.sendMessage('§cUso: !moveclan NomeDoJogador red/blue/green/yellow');
+                player.sendMessage('§7Exemplo: !moveclan SerafimM2025 red');
+                return;
+            }
+            
+            const targetName = parts[1];
+            const clanKey = parts[2].toLowerCase();
+            
+            if (!CLANS[clanKey]) {
+                player.sendMessage(`§c[ERRO] Cla invalido: ${clanKey}`);
+                player.sendMessage('§7Use: red, blue, green ou yellow');
+                return;
+            }
+            
+            const target = world.getAllPlayers().find(p => p.name === targetName);
+            if (!target) {
+                player.sendMessage(`§c[ERRO] Jogador "${targetName}" nao encontrado!`);
+                player.sendMessage('§7Jogadores online:');
+                world.getAllPlayers().forEach(p => player.sendMessage(`§7- ${p.name}`));
+                return;
+            }
+            
+            const newClan = CLANS[clanKey];
+            
+            // DEBUG: Mostrar tags antes
+            const tagsBefore = target.getTags().filter(t => t.includes('clan'));
+            player.sendMessage(`§7[DEBUG] Tags ANTES: ${tagsBefore.join(', ')}`);
+            console.warn(`[CLANS] Tags ANTES para ${targetName}: ${target.getTags().join(', ')}`);
+            
+            // Usar comandos nativos do Minecraft (mais confiável)
+            system.run(async () => {
+                try {
+                    // Remover todas as tags de clã usando comandos
+                    for (const key in CLANS) {
+                        const oldTag = CLANS[key].tag;
+                        await target.runCommandAsync(`tag @s remove ${oldTag}`).catch(() => {});
+                        console.warn(`[CLANS] Comando: tag @s remove ${oldTag}`);
+                    }
+                    
+                    // Adicionar nova tag usando comando
+                    await target.runCommandAsync(`tag @s add ${newClan.tag}`);
+                    console.warn(`[CLANS] Comando: tag @s add ${newClan.tag}`);
+                    
+                    // Atualizar nameTag
+                    target.nameTag = `${newClan.color}[${newClan.name}]\n${target.name}`;
+                    
+                    // DEBUG: Mostrar tags depois
+                    const tagsAfter = target.getTags().filter(t => t.includes('clan'));
+                    player.sendMessage(`§7[DEBUG] Tags DEPOIS: ${tagsAfter.join(', ')}`);
+                    console.warn(`[CLANS] Tags DEPOIS para ${targetName}: ${target.getTags().join(', ')}`);
+                    
+                    player.sendMessage(`§a[OK] ${targetName} -> ${newClan.color}${newClan.name}`);
+                    target.sendMessage(`§aVoce agora e do cla ${newClan.color}${newClan.name}§a!`);
+                } catch (error) {
+                    player.sendMessage(`§c[ERRO] Falha ao mudar cla: ${error}`);
+                    console.warn(`[CLANS] ERRO: ${error}`);
+                }
+            });
+            
             return;
         }
 
@@ -733,6 +1320,8 @@ function buyItem(player, item, category) {
     const objective = world.scoreboard.getObjective('coins');
     const balance = objective?.getScore(player) ?? 0;
     
+    console.warn(`[DEBUG] Tentativa de compra: Player=${player.name}, Saldo=${balance}, Preco=${item.price}`);
+
     if (balance < item.price) {
         player.sendMessage(`§cVoce nao tem coins suficientes! Precisa de ${item.price}.`);
         system.run(() => openClanShopCategory(player, category));
@@ -777,132 +1366,187 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
 });
 
 //---------------------------------------------------------
-// SISTEMA DE MANUTENÇÃO DE NPCs (TOTENS E LOJA)
+// SISTEMA DE MANUTENÇÃO UNIFICADA
 //---------------------------------------------------------
-// Loop de Manutenção: Garante existência e posição dos NPCs
-// Loop de Manutenção: Garante existência e posição dos NPCs e segurança dos jogadores
 function maintenanceLoop() {
     try {
-        const overworld = world.getDimension('overworld');
         const allPlayers = world.getAllPlayers();
-        if (allPlayers.length === 0) return;
-
-        // --- 1. LIMPEZA DE TAGS POLLUÍDAS E EFEITOS DE DISTORÇÃO (PLAYERS) ---
-        const badTags = ['totem_npc', 'clan_shop', 'totem_red', 'totem_blue', 'totem_green', 'totem_yellow'];
+        
+        // --- 1. LIMPEZA DE PLAYERS (EFEITOS E TAGS) ---
+        const badTags = ['totem_red', 'totem_blue', 'totem_green', 'totem_yellow'];
         for (const p of allPlayers) {
-            // Remover tags de NPC se o player pegou por acidente
             for (const tag of badTags) if (p.hasTag(tag)) p.removeTag(tag);
             
-            // ANTÍDOTO: Se o player tiver lentidão 255 (distorção) ou resistência 255 (bug de totem), remover
             const slowness = p.getEffect('slowness');
             if (slowness && slowness.amplifier >= 250) p.removeEffect('slowness');
             
             const resistance = p.getEffect('resistance');
             if (resistance && resistance.amplifier >= 250) p.removeEffect('resistance');
 
-            // Resgate do Vazio (Void Rescue)
-            if (p.location.y < -60) {
+            if (p.location.y < -64) {
                 p.teleport({ x: 0, y: 100, z: 0 });
                 p.sendMessage('§e[SISTEMA] Voce foi resgatado do limbo!');
             }
         }
 
-        // --- 2. MANUTENÇÃO DA LOJA DO CLÃ (SÓ NPC) ---
-        const shops = overworld.getEntities({ typeId: 'minecraft:npc' }).filter(e => e.nameTag === '§6§lLOJA DO CLÃ' || e.hasTag('clan_shop'));
-        
-        if (shops.length === 0) {
+        // --- 2. MANUTENÇÃO DE ENTIDADES (TOTENS E LOJA) ---
+        for (const config of TOTEM_CONFIG) {
             try {
-                const newShop = overworld.spawnEntity('minecraft:npc', SHOP_LOCATION);
-                newShop.nameTag = '§6§lLOJA DO CLÃ';
-                newShop.addTag('clan_shop');
-            } catch(e) {}
-        }
+                const dim = world.getDimension(config.dimension);
+                
+                // --- NOVO: PEDESTAL DE BEDROCK E LIMPEZA DE ÁREA ---
+                const loc = config.location;
+                const x = Math.floor(loc.x);
+                const y = Math.floor(loc.y);
+                const z = Math.floor(loc.z);
 
-        for (const shop of shops) {
-            if (!shop.isValid) continue;
-            if (!shop.hasTag('clan_shop')) shop.addTag('clan_shop');
-            
-            const loc = shop.location;
-            const dist = Math.sqrt((loc.x-SHOP_LOCATION.x)**2 + (loc.z-SHOP_LOCATION.z)**2);
-            if (dist > 1 || loc.y < -60) shop.teleport(SHOP_LOCATION);
-            
-            const npcComp = shop.getComponent('minecraft:npc');
-            const DESIRED_SKIN = 19; 
+                // Criar base 3x3 de bedrock
+                safeRunCommand(dim, `fill ${x - 1} ${y - 1} ${z - 1} ${x + 1} ${y - 1} ${z + 1} bedrock`);
+                
+                // Limpar área 3x3x3 de ar ao redor do totem
+                safeRunCommand(dim, `fill ${x - 1} ${y} ${z - 1} ${x + 1} ${y + 2} ${z + 1} air`);
 
-            if (npcComp && npcComp.skinIndex !== DESIRED_SKIN) {
-                try {
-                    npcComp.skinIndex = DESIRED_SKIN;
-                    world.sendMessage(`§a[SISTEMA] Skin da Loja atualizada para ${DESIRED_SKIN}!`);
-                } catch (err) {
-                    console.warn(`[CLANS] Erro ao aplicar skin ${DESIRED_SKIN}: ${err}`);
-                }
+                // Tentar garantir a entidade na posição exata
+                ensureEntityAtExactPosition(
+                    dim,
+                    config.typeId,
+                    [config.tag, 'totem_npc'],
+                    config.name,
+                    config.location,
+                    (entity) => {
+                        // Setup extra
+                        if (!entity.getEffect('resistance')) entity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
+                        if (!entity.getEffect('slowness')) entity.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
+                        if (config.id === 'shop') {
+                            if (!entity.hasTag('clan_shop')) entity.addTag('clan_shop');
+                        }
+                    }
+                );
+            } catch (e) {
+                console.warn(`[CLANS] Erro crítico manutenção ${config.id}: ${e}`);
             }
-            if (!shop.getEffect('resistance')) shop.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
-            if (!shop.getEffect('slowness')) shop.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
         }
-
-        // --- 3. MANUTENÇÃO DOS TOTENS (SÓ NPC) ---
-        for (const clanKey in CLANS) {
-            try {
-                const clan = CLANS[clanKey];
-                const basePos = clan.base;
-                const tag = `totem_${clanKey}`;
-                let totem = overworld.getEntities({ typeId: 'minecraft:npc', tags: [tag] })[0];
-
-                if (!totem) {
-                    totem = overworld.getEntities({ typeId: 'minecraft:npc' }).find(e => e.nameTag.includes(`TOTEM ${clan.name}`));
-                    if (totem) {
-                        totem.addTag(tag);
-                        totem.addTag('totem_npc');
-                    } else {
-                        try {
-                            const t = overworld.spawnEntity('minecraft:npc', basePos);
-                            t.nameTag = `§l${clan.color}TOTEM ${clan.name}`;
-                            t.addTag(tag);
-                            t.addTag('totem_npc');
-                            totem = t;
-                        } catch(e) {}
-                    }
-                }
-
-                if (totem && totem.isValid && totem.typeId === 'minecraft:npc') {
-                    const dist = Math.sqrt((totem.location.x-basePos.x)**2 + (totem.location.z-basePos.z)**2);
-                    if (dist > 1 || totem.location.y < -60) totem.teleport(basePos);
-                    
-                    const npcComp = totem.getComponent('minecraft:npc');
-                    if (npcComp) {
-                        const idx = clanKey === 'red' ? 21 : clanKey === 'blue' ? 36 : clanKey === 'green' ? 26 : 39;
-                        if (npcComp.skinIndex !== idx) npcComp.skinIndex = idx;
-                    }
-                    if (!totem.getEffect('resistance')) totem.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
-                    if (!totem.getEffect('slowness')) totem.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
-                }
-            } catch (innerE) {}
-        }
-
+        console.warn(`[CLANS] Manutencao de rotina concluida - ${allPlayers.length} jogadores online.`);
     } catch (e) {}
 }
 
-// Loop de Segurança (Alta Frequência: 0.5s)
-system.runInterval(() => {
+// Loop de Segurança e Manutenção (1 minuto)
+system.runInterval(maintenanceLoop, 1200);
+
+// Substituindo o antigo ensureEntityAtExactPosition para ser mais silencioso e seguro
+function ensureEntityAtExactPosition(dimension, typeId, selectorTags, expectedNameTag, expectedPos, extraSetupFn) {
     try {
-        for (const p of world.getAllPlayers()) {
-            // Remover tags de NPC se o player pegou por acidente
-            const badTags = ['totem_npc', 'clan_shop', 'totem_red', 'totem_blue', 'totem_green', 'totem_yellow'];
-            for (const tag of badTags) if (p.hasTag(tag)) p.removeTag(tag);
-            
-            // Remover efeitos de NPC (Extremos) do jogador
-            const slowness = p.getEffect('slowness');
-            if (slowness && slowness.amplifier >= 250) p.removeEffect('slowness');
-            
-            const resistance = p.getEffect('resistance');
-            if (resistance && resistance.amplifier >= 250) p.removeEffect('resistance');
+        const candidates = dimension.getEntities({ 
+            location: expectedPos, 
+            maxDistance: 6 
+        }).filter(e => e.typeId === typeId || selectorTags.some(t => e.hasTag(t)));
+
+        // Remover duplicatas
+        if (candidates.length > 1) {
+            for (let i = 1; i < candidates.length; i++) {
+                try { candidates[i].remove(); } catch(err) {}
+            }
         }
-    } catch(e) {}
+
+        let primary = candidates[0];
+
+        if (!primary) {
+            // Tentar spawnar (Pode falhar se o chunk não estiver carregado)
+            try {
+                console.warn(`[CLANS] Spawnando ${typeId} em ${expectedPos.x}, ${expectedPos.y}, ${expectedPos.z}`);
+                primary = dimension.spawnEntity(typeId, {
+                    x: expectedPos.x + 0.5,
+                    y: expectedPos.y,
+                    z: expectedPos.z + 0.5
+                });
+            } catch (e) {
+                // Se der erro de chunk, apenas sai e espera o próximo ciclo
+                return null;
+            }
+        }
+
+        // Atualizar estado
+        if (primary && primary.isValid()) {
+            if (expectedNameTag) primary.nameTag = expectedNameTag;
+            for (const t of selectorTags) if (t && !primary.hasTag(t)) primary.addTag(t);
+            
+            const loc = primary.location;
+            const dist = Math.sqrt((loc.x - (expectedPos.x + 0.5))**2 + (loc.z - (expectedPos.z + 0.5))**2);
+            if (dist > 1 || Math.abs(loc.y - expectedPos.y) > 1 || loc.y < -60) {
+                try {
+                    primary.teleport({ x: expectedPos.x + 0.5, y: expectedPos.y, z: expectedPos.z + 0.5 }, { dimension });
+                } catch(e) {}
+            }
+
+            if (extraSetupFn) extraSetupFn(primary);
+        }
+
+        return primary;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Helper universal para comandos (compatibilidade de versões)
+function safeRunCommand(dimension, command) {
+    try {
+        if (dimension.runCommandAsync) {
+            return dimension.runCommandAsync(command).catch(e => {
+                // Silencioso para comandos de rotina, mas loga erro de sintaxe se necessário
+            });
+        } else if (dimension.runCommand) {
+            return dimension.runCommand(command);
+        }
+    } catch (e) {}
+}
+
+
+
+
+// Função auxiliar para carregar ticking areas (Garantir carregamento do chunk)
+function tryAddTickingArea(dimension, location, name) {
+    try {
+        const x = Math.floor(location.x);
+        const y = Math.floor(location.y);
+        const z = Math.floor(location.z);
+        safeRunCommand(dimension, `tickingarea remove ${name}`);
+        safeRunCommand(dimension, `tickingarea add circle ${x} ${y} ${z} 4 ${name}`);
+    } catch (e) {}
+}
+
+// Loop para Spawnar Partículas (Auras) dos Totens
+system.runInterval(() => {
+    for (const config of TOTEM_CONFIG) {
+        if (!config.aura) continue;
+        try {
+            const dim = world.getDimension(config.dimension);
+            // Spawnar múltiplas partículas com variação aleatória para criar uma "nuvem"
+            for (let i = 0; i < 5; i++) {
+                dim.spawnParticle(config.aura, {
+                    x: config.location.x + 0.5 + (Math.random() - 0.5) * 1.5,
+                    y: config.location.y + 0.2 + Math.random() * 2.5,
+                    z: config.location.z + 0.5 + (Math.random() - 0.5) * 1.5
+                });
+            }
+        } catch(e) {}
+    }
 }, 10);
 
-system.runInterval(maintenanceLoop, 100); // Manutenção de NPCs a cada 5s
-system.runTimeout(maintenanceLoop, 20);
+//------------------------------------------
+// INICIALIZAÇÃO DO SERVIDOR
+//------------------------------------------
+system.runTimeout(() => {
+    console.warn('[CLANS] Iniciando carregamento de areas...');
+    for (const config of TOTEM_CONFIG) {
+        const dim = world.getDimension(config.dimension);
+        tryAddTickingArea(dim, config.location, `clan_${config.tag}`);
+    }
+    // Agendar a primeira manutenção para 10 segundos depois (200 ticks)
+    // Assim o totem e o pedestal aparecem logo no início sem esperar 1 minuto
+    system.runTimeout(() => {
+        maintenanceLoop();
+    }, 200);
+}, 100);
 
 //------------------------------------------
 // PROTEÇÃO DE CONSTRUÇÃO (CLÃ AMARELO)
