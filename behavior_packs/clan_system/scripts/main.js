@@ -21,28 +21,42 @@ const CLAN_BASE_RADIUS = 30;
 // Configuração dos clãs (Carrega do salvo ou usa padrão)
 const CLANS = {
     red: { 
-        name: 'RED', 
+        name: 'Nação do Fogo', 
         color: '§c', 
         tag: 'clan_red',
         ...loadClanBase('red', { x: 42, y: 43, z: -225 }, 'nether')
     },
     blue: { 
-        name: 'BLUE', 
+        name: 'Nação da Água', 
         color: '§9', 
         tag: 'clan_blue',
         ...loadClanBase('blue', { x: -678, y: 24, z: 631 }, 'overworld')
     },
     green: { 
-        name: 'GREEN', 
+        name: 'Nação da Terra', 
         color: '§a', 
         tag: 'clan_green',
         ...loadClanBase('green', { x: -927, y: -17, z: -976 }, 'overworld')
     },
     yellow: { 
-        name: 'YELLOW', 
+        name: 'Nação do Vento', 
         color: '§e', 
         tag: 'clan_yellow',
         ...loadClanBase('yellow', { x: -483, y: 170, z: 509 }, 'overworld')
+    },
+    staff: {
+        name: 'Staff',
+        color: '§0',
+        tag: 'clan_staff',
+        base: { x: 0, y: 0, z: 0 }, 
+        dimension: 'overworld'
+    },
+    default: {
+        name: 'Nomades',
+        color: '§7',
+        tag: 'clan_default',
+        base: { x: 0, y: 0, z: 0 }, 
+        dimension: 'overworld'
     }
 };
 
@@ -106,9 +120,67 @@ function checkAdmin(player) {
         const colorRegex = /§[0-9a-fk-or]/g;
         return tags.some(tag => {
             const cleanTag = tag.replace(colorRegex, '').toLowerCase();
-            return cleanTag.includes('admin') || cleanTag.includes('op') || cleanTag.includes('staff');
+            return cleanTag.includes('admin') || cleanTag.includes('op');
         });
     } catch(e) { return false; }
+}
+
+// Helper centralizado para obter scores de forma segura (evita erros de identidade)
+function getPlayerScore(player, objectiveId) {
+    try {
+        const obj = world.scoreboard.getObjective(objectiveId);
+        if (!obj) return 0;
+        
+        // 1. Tentar encontrar o participante pelo nome (Username) na lista oficial
+        // Este é o método mais preciso no Bedrock para evitar duplicatas de identidade
+        const participant = obj.getParticipants().find(p => p.displayName === player.name);
+        if (participant) return obj.getScore(participant) ?? 0;
+
+        // 2. Fallback pela identidade interna
+        const identity = player.scoreboardIdentity;
+        if (identity) return obj.getScore(identity) ?? 0;
+
+        // 3. Fallback final pelo nome string
+        return obj.getScore(player.name) ?? 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+// Helper centralizado para adicionar scores de forma segura (O mais Robusto possível)
+function addPlayerScore(player, objectiveId, amount) {
+    try {
+        // Tentar primeiro pelo comando nativo (É o mais estável de todos no Bedrock)
+        const sign = amount >= 0 ? 'add' : 'remove';
+        const val = Math.abs(amount);
+        player.runCommand(`scoreboard players ${sign} @s ${objectiveId} ${val}`);
+        return true;
+    } catch (e) {
+        try {
+            // Fallback para Script API se o comando falhar (ex: em dimensões bugadas)
+            const obj = world.scoreboard.getObjective(objectiveId);
+            if (!obj) return false;
+            
+            const identity = player.scoreboardIdentity;
+            if (identity) {
+                obj.addScore(identity, amount);
+                return true;
+            }
+            obj.addScore(player.name, amount);
+            return true;
+        } catch (e2) {
+            return false;
+        }
+    }
+}
+
+// Obter cargo do jogador baseado em abates ou tag de rei
+function getRank(player) {
+    if (player.hasTag('clan_king')) return 'Rei';
+    const kills = getPlayerScore(player, 'player_kills');
+    if (kills >= 50) return 'Soldado';
+    if (kills >= 20) return 'Recruta';
+    return 'Membro';
 }
 
 //------------------------------------------
@@ -116,22 +188,64 @@ function checkAdmin(player) {
 //------------------------------------------
 system.runInterval(() => {
     try {
-        if (!world.scoreboard.getObjective('coins')) {
-            world.scoreboard.addObjective('coins', '§6Coins');
-        }
-        const objective = world.scoreboard.getObjective('coins');
-        if (objective) {
-            // MOSTRAR NA LATERAL DIREITA (Sidebar)
-            world.scoreboard.setObjectiveAtDisplaySlot('sidebar', { objective: objective });
+        // Forçar criação e exibição (Essencial para mundos novos)
+        let objective = world.scoreboard.getObjective('coins');
+        if (!objective) objective = world.scoreboard.addObjective('coins', '§6Coins');
+        
+        // Inicializar placar de abates se não existir
+        let killObjective = world.scoreboard.getObjective('player_kills');
+        if (!killObjective) world.scoreboard.addObjective('player_kills', '§cAbates');
+        
+        world.scoreboard.setObjectiveAtDisplaySlot('sidebar', { objective: objective });
 
-            for (const player of world.getAllPlayers()) {
-                if (objective.getScore(player) === undefined) {
-                    objective.setScore(player, 0);
+        // Inicializar jogadores online (Muito importante para evitar o erro de identidade no primeiro acesso)
+        for (const player of world.getAllPlayers()) {
+            const playerName = player.name;
+            try {
+                // Forçar criação da identidade no placar (Comando é mais robusto para isso)
+                player.runCommand(`scoreboard players add @s coins 0`);
+                player.runCommand(`scoreboard players add @s player_kills 0`);
+
+                const currentCoins = getPlayerScore(player, 'coins');
+                const currentKills = getPlayerScore(player, 'player_kills');
+                
+                // Backup de Segurança (Dynamic Property)
+                if (currentCoins > 0) world.setDynamicProperty(`score_coins_${playerName}`, currentCoins);
+                if (currentKills > 0) world.setDynamicProperty(`score_kills_${playerName}`, currentKills);
+                
+                // Restaurar se o placar for resetado
+                const savedCoins = world.getDynamicProperty(`score_coins_${playerName}`) ?? 0;
+                if (currentCoins === 0 && savedCoins > 0) {
+                    addPlayerScore(player, 'coins', savedCoins);
                 }
-            }
+            } catch (e) {}
         }
     } catch (e) {}
-}, 100);
+}, 20);
+
+// CONTADOR DE ABATES (NOVO)
+world.afterEvents.entityDie.subscribe((event) => {
+    const victim = event.deadEntity;
+    const damager = event.damageSource.damagingEntity;
+    
+    // Verificar se foi um player matando outro player
+    if (victim.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
+        try {
+            const currentKills = getPlayerScore(damager, 'player_kills');
+            if (addPlayerScore(damager, 'player_kills', 1)) {
+                // Feedback imediato no chat (Calculado localmente para ser instantâneo)
+                damager.sendMessage(`§a[COMBATE] Voce abateu ${victim.name}! Total de abates: ${currentKills + 1}`);
+                
+                // Forçar atualização de nome logo em seguida
+                system.runTimeout(() => {
+                    updatePlayerNames();
+                }, 20);
+            }
+        } catch (e) {
+            console.warn('[CLANS] Erro ao registrar abate:', e);
+        }
+    }
+});
 
 // MOSTRAR SALDO NA TELA (REMOVIDO ACTIONBAR POR FAVOR DO SIDEBAR)
 
@@ -318,27 +432,35 @@ world.afterEvents.playerSpawn.subscribe((event) => {
     
 
     
-    // Verificar se o jogador já está em algum clã
-    let hasClã = false;
-    for (const clanKey in CLANS) {
-        if (player.hasTag(CLANS[clanKey].tag)) {
-            hasClã = true;
-            const clan = CLANS[clanKey];
-            
-            // Atualizar nome: clã e nick com a mesma cor
-            player.nameTag = `${clan.color}[${clan.name}]\n${player.name}`;
-            
-            player.sendMessage(`${clan.color}[${clan.name}] §7Bem-vindo de volta ao cla ${clan.color}${clan.name}§7!`);
-            world.sendMessage(`${clan.color}${player.name} §7entrou no servidor (Cla ${clan.color}${clan.name}§7)`);
+    // Verificar situação do clã
+    let currentClanKey = null;
+    for (const key in CLANS) {
+        if (player.hasTag(CLANS[key].tag)) {
+            currentClanKey = key;
             break;
         }
     }
     
-    // Se não está em nenhum clã, mostrar menu de seleção
-    if (!hasClã) {
+    if (!currentClanKey) {
+        // É a primeira vez do jogador: mostrar seleção única
+        player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã inicial.`);
+        
+        // Atribuir Nômade temporário até escolher
+        player.addTag(CLANS.default.tag);
+        player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
+        
         system.runTimeout(() => {
-            showClanSelectionMenu(player);
-        }, 40); // 2 segundos de delay
+            if (player.isValid) showClanSelectionMenu(player);
+        }, 100); 
+    } else {
+        // Já tem um clã real: Apenas Boas-Vindas
+        const clan = CLANS[currentClanKey];
+        const rank = getRank(player);
+        player.nameTag = (currentClanKey === 'staff' || currentClanKey === 'default') 
+            ? `${clan.color}[ ${clan.name} ]\n§f${player.name}`
+            : `${clan.color}[ ${rank} ]\n§f${player.name}`;
+        player.sendMessage(`§7[SISTEMA] Voce e um §f${rank} da ${clan.name}§7. Bem-vindo de volta!`);
+        world.sendMessage(`${clan.color}${player.name} §7(da ${clan.name}) entrou no servidor.`);
     }
 });
 
@@ -356,21 +478,32 @@ async function showClanSelectionMenu(player) {
         .title('§6Escolha seu Cla!')
         .body('§7Bem-vindo ao servidor!\n§7Escolha um cla para fazer parte:');
     
-    form.button(`${CLANS.red.color}[RED]\n§7Cla Vermelho`);
-    form.button(`${CLANS.blue.color}[BLUE]\n§7Cla Azul`);
-    form.button(`${CLANS.green.color}[GREEN]\n§7Cla Verde`);
-    form.button(`${CLANS.yellow.color}[YELLOW]\n§7Cla Amarelo`);
+    form.button(`${CLANS.red.color}[${CLANS.red.name}]\n§7Poder do Fogo`);
+    form.button(`${CLANS.blue.color}[${CLANS.blue.name}]\n§7Poder da Água`);
+    form.button(`${CLANS.green.color}[${CLANS.green.name}]\n§7Poder da Terra`);
+    form.button(`${CLANS.yellow.color}[${CLANS.yellow.name}]\n§7Poder do Vento`);
     
     const response = await form.show(player);
-    if (!player || response.canceled) {
-        system.runTimeout(() => { if (player) showClanSelectionMenu(player); }, 100);
+    if (!player) return;
+    
+    // CASO CANCELE: Vira Nômade permanentemente (é a 6ª opção automática)
+    if (response.canceled) {
+        player.addTag(CLANS.default.tag);
+        player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
+        player.sendMessage(`§e[SISTEMA] Você escolheu seguir como §f${CLANS.default.name}§e.`);
+        player.sendMessage(`§7(Agora, trocas de clã só podem ser feitas por Staff/Admin)`);
         return;
     }
     
     const clanKeys = ['red', 'blue', 'green', 'yellow'];
     const selectedClan = CLANS[clanKeys[response.selection]];
+    
+    // Remover tag de Nômade se existir
+    if (player.hasTag(CLANS.default.tag)) player.removeTag(CLANS.default.tag);
+    
     player.addTag(selectedClan.tag);
-    player.nameTag = `${selectedClan.color}[${selectedClan.name}]\n${player.name}`;
+    const rank = getRank(player);
+    player.nameTag = `${selectedClan.color}[ ${rank} ]\n§f${player.name}`;
     
     player.sendMessage(`${selectedClan.color}[${selectedClan.name}] §aVoce entrou no cla ${selectedClan.color}${selectedClan.name}§a!`);
     world.sendMessage(`${selectedClan.color}${player.name} §7entrou no ${selectedClan.color}[${selectedClan.name}]§7!`);
@@ -388,22 +521,27 @@ system.runInterval(() => {
     }
 }, 1);
 
-// Função para atualizar os nomes dos jogadores com seus clãs
+// Função para atualizar os nomes dos jogadores com seus clãs e cargos
 function updatePlayerNames() {
     try {
         for (const player of world.getAllPlayers()) {
-            // Verificar qual clã o jogador está
             for (const clanKey in CLANS) {
                 const clan = CLANS[clanKey];
                 if (player.hasTag(clan.tag)) {
-                    // Atualizar nome se necessário
-                    let clanPrefix = `${clan.color}[${clan.name}]`;
-                    if (player.hasTag('clan_leader')) {
-                        clanPrefix += '§6[LIDER]';
+                    const rank = getRank(player);
+                    let displayName = '';
+                    
+                    if (clanKey === 'staff' || clanKey === 'default') {
+                        // Staff e Nômades: [ Nome do Clã ] em cima, nick branco em baixo
+                        displayName = `${clan.color}[ ${clan.name} ]\n§f${player.name}`;
+                    } else {
+                        // Novo Formato solicitado: [ Cargo ] em cima, nick branco em baixo
+                        // A cor do clã identifica a nação
+                        displayName = `${clan.color}[ ${rank} ]\n§f${player.name}`;
                     }
                     
-                    if (!player.nameTag.startsWith(clanPrefix)) {
-                        player.nameTag = `${clanPrefix}\n${player.name}`;
+                    if (player.nameTag !== displayName) {
+                        player.nameTag = displayName;
                     }
                     break;
                 }
@@ -447,15 +585,27 @@ system.runInterval(() => {
 
             // 🔴 CLÃ RED: Resistência ao Fogo
             if (player.hasTag(CLANS.red.tag)) {
-                const fr = player.getEffect('fire_resistance');
-                if (!fr || fr.duration < 220) player.addEffect('fire_resistance', 24000, { showParticles: false });
+                player.addEffect('fire_resistance', 600, { showParticles: false });
             }
 
+            // ⚪ CLÃ STAFF: Imortalidade + Pacifismo (Fraqueza)
+            if (player.hasTag(CLANS.staff.tag)) {
+                const res = player.getEffect('resistance');
+                if (!res || res.amplifier < 250) player.addEffect('resistance', 600, { amplifier: 255, showParticles: false });
+                
+                const weak = player.getEffect('weakness');
+                if (!weak || weak.amplifier < 250) player.addEffect('weakness', 600, { amplifier: 255, showParticles: false });
+            }
+
+            // Nômades (Default) não têm poderes (sem totem)
             // --- DEFESA NOS TOTENS (TODOS OS CLÃS) ---
             let nearOwnTotem = false;
             let currentBaseKey = null;
 
             for (const clanKey in CLANS) {
+                // Staff e Nômades não têm territórios físicos ou totens
+                if (clanKey === 'staff' || clanKey === 'default') continue;
+
                 const clan = CLANS[clanKey];
                 const inThisBase = isInBase(player, clan.base, clan.dimension || 'overworld');
                 
@@ -478,7 +628,7 @@ system.runInterval(() => {
             if (currentBaseKey !== lastBaseKey) {
                 if (currentBaseKey) {
                     const clan = CLANS[currentBaseKey];
-                    player.onScreenDisplay.setActionBar(`§eEntrando no territorio do Cla ${clan.color}${clan.name}`);
+                    player.onScreenDisplay.setActionBar(`§eEntrando no territorio da ${clan.color}${clan.name}`);
                 } else if (lastBaseKey) {
                     player.onScreenDisplay.setActionBar(`§cSaindo de area protegida`);
                 }
@@ -504,8 +654,23 @@ function isInBase(player, base, dimensionId) {
 // CANCELAMENTO DE DANOS ESPECÍFICOS
 //------------------------------------------
 world.beforeEvents.entityHurt.subscribe((event) => {
-    const player = event.hurtEntity;
-    if (player.typeId !== 'minecraft:player') return;
+    const victim = event.hurtEntity;
+    const damager = event.damageSource.damagingEntity;
+
+    // 🛡️ STAFF: Não sofre dano de NINGUÉM nem de NADA
+    if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.staff.tag)) {
+        event.cancel = true;
+        return;
+    }
+
+    // 🛡️ STAFF: Não causa dano a NINGUÉM nem a NADA
+    if (damager && damager.typeId === 'minecraft:player' && damager.hasTag(CLANS.staff.tag)) {
+        event.cancel = true;
+        return;
+    }
+
+    if (victim.typeId !== 'minecraft:player') return;
+    const player = victim;
 
     // 🟡 CLÃ YELLOW: Imunidade a Dano de Queda
     if (player.hasTag(CLANS.yellow.tag) && event.damageSource.cause === 'fall') {
@@ -669,28 +834,26 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
     
-        if (message.startsWith('!saldo') || message.startsWith('!balance')) {
+        // COMANDO: SALDO / BALANÇO
+        if (msgLow === '!saldo' || msgLow === '!money' || msgLow === '!balance') {
             event.cancel = true;
-            const objective = world.scoreboard.getObjective('coins');
-            const score = objective?.getScore(player) ?? 0;
+            const score = getPlayerScore(player, 'coins');
             
             player.sendMessage(`§e--------------------------------`);
             player.sendMessage(`§fNome: §b${player.name}`);
-            player.sendMessage(`§fID: §7${player.id}`);
-            player.sendMessage(`§6Saldo (Script): §a${score}`);
+            player.sendMessage(`§6Saldo: §a${score} Coins`);
             player.sendMessage(`§e--------------------------------`);
-            console.warn(`[DEBUG] !saldo: ${player.name} (${player.id}) = ${score}`);
             return;
         }
 
         // COMANDO: PAGAR / DAR MOEDAS (Player x Player)
-        // Uso: !darmoedas "Nome" valor
-        if (message.startsWith('!darmoedas') || message.startsWith('!pagar') || message.startsWith('!pay')) {
+        // Uso: !pagar "Nome" valor
+        if (msgLow.startsWith('!darmoedas') || msgLow.startsWith('!pagar') || msgLow.startsWith('!pay')) {
             event.cancel = true;
             
             const args = message.match(/"([^"]+)"|'([^']+)'|(\S+)/g);
             if (!args || args.length < 3) {
-                player.sendMessage('§cUso incorreto! Digite: !darmoedas "Nome do Jogador" valor');
+                player.sendMessage('§cUso incorreto! Digite: !pagar "Nome do Jogador" valor');
                 return;
             }
 
@@ -703,8 +866,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             }
 
             // Verificar saldo do pagador
-            const objective = world.scoreboard.getObjective('coins');
-            const balance = objective?.getScore(player) ?? 0;
+            const balance = getPlayerScore(player, 'coins');
             
             if (balance < amount) {
                 player.sendMessage(`§cVoce nao tem coins suficientes! Saldo: ${balance}`);
@@ -719,9 +881,8 @@ world.beforeEvents.chatSend.subscribe((event) => {
             }
 
             // Transação
-            if (objective) {
-                objective.addScore(player, -amount);
-                objective.addScore(targetPlayer, amount);
+            if (addPlayerScore(player, 'coins', -amount)) {
+                addPlayerScore(targetPlayer, 'coins', amount);
                 
                 player.sendMessage(`§aVoce enviou §e${amount} Coins §apara §f${targetName}§a.`);
                 targetPlayer.sendMessage(`§aVoce recebeu §e${amount} Coins §ade §f${player.name}§a.`);
@@ -755,9 +916,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 return;
             }
 
-            const objective = world.scoreboard.getObjective('coins');
-            if (objective) {
-                objective.addScore(targetPlayer, amount);
+            if (addPlayerScore(targetPlayer, 'coins', amount)) {
                 player.sendMessage(`§a[ADMIN] Voce adicionou §e${amount} Coins §apara §f${targetName}§a.`);
                 targetPlayer.sendMessage(`§aVoce recebeu §e${amount} Coins §ada administracao!`);
                 console.warn(`[ECONOMIA-ADMIN] ${player.name} criou ${amount} para ${targetName}`);
@@ -782,77 +941,54 @@ world.beforeEvents.chatSend.subscribe((event) => {
             }
         }
         
-        if (!playerClan) {
-            player.sendMessage('§cVoce nao tem um cla para ir a base!');
+        if (!playerClan || playerClan.tag === CLANS.default.tag || playerClan.tag === CLANS.staff.tag) {
+            player.sendMessage('§cNômades e Staff não possuem uma base fixa para teleporte!');
             return;
         }
 
         // Verificar custo (100 coins)
-        try {
-            const objective = world.scoreboard.getObjective('coins');
-            if (objective) {
-                const balance = objective.getScore(player) ?? 0;
-                const cost = 100;
-                
-                if (balance < cost) {
-                    player.sendMessage(`§cVoce precisa de ${cost} Coins para teleportar! Seu saldo: ${balance} Coins`);
-                    return;
-                }
-                
-                // Descontar valor
-                objective.addScore(player, -cost);
-                player.sendMessage(`§eFoi descontado ${cost} Coins do seu saldo.`);
-            }
-        } catch (e) {}
+        const balance = getPlayerScore(player, 'coins');
+        const cost = 100;
         
-        const base = playerClan.base;
-        const dimensionName = playerClan.dimension || 'overworld';
-        
-        // Teleportar o jogador
-        system.run(() => {
-            player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension(dimensionName) });
-            player.sendMessage(`${playerClan.color}[CLAN] §aVoce foi teleportado para a base ${playerClan.name}!`);
-        });
-    }
-
-
-    if (message === '!saldo' || message === '!money') {
-        event.cancel = true;
-        
-        try {
-            const objective = world.scoreboard.getObjective('coins');
-            const score = objective?.getScore(player) ?? 0;
-            player.sendMessage(`§6=== SEU SALDO ===\n§fVoce tem: §e${score} Coins`);
-        } catch (e) {
-            player.sendMessage('§cErro ao verificar saldo.');
-        }
-    }
-
-        if (message.startsWith('!pagar ')) {
-            event.cancel = true;
-            const args = message.split(' ');
-            if (args.length < 3) return player.sendMessage('§cUso correto: !pagar @JOGADOR <QUANTIDADE>');
-            const targetName = args[1].replace('@', '').replace(/"/g, '');
-            const amount = parseInt(args[2]);
-            if (isNaN(amount) || amount <= 0) return player.sendMessage('§cQuantidade invalida!');
-            const objective = world.scoreboard.getObjective('coins');
-            const balance = objective?.getScore(player) ?? 0;
-            if (balance < amount) return player.sendMessage(`§cVoce nao tem coins suficientes! Saldo: ${balance} Coins`);
-            const targetPlayer = world.getAllPlayers().find(p => p.name === targetName);
-            if (!targetPlayer) return player.sendMessage(`§cJogador "${targetName}" nao encontrado ou offline.`);
-            system.run(() => {
-                objective.addScore(player, -amount);
-                objective.addScore(targetPlayer, amount);
-                player.sendMessage(`§aPagamento de ${amount} Coins enviado para ${targetName}!`);
-                targetPlayer.sendMessage(`§aVoce recebeu ${amount} Coins de ${player.name}!`);
-            });
+        if (balance < cost) {
+            player.sendMessage(`§cVoce precisa de ${cost} Coins para teleportar! Seu saldo: ${balance} Coins`);
             return;
         }
+        
+        // 🛡️ TRAVA DE SEGURANÇA: Só teleporta se o pagamento passar
+        console.warn(`[DEBUG-BASE] Player: ${player.name}, Saldo pego: ${balance}, Tentando cobrar: ${cost}`);
+        
+        if (addPlayerScore(player, 'coins', -cost)) {
+            player.sendMessage(`§eDescontado ${cost} Coins do seu saldo.`);
+            
+            const base = playerClan.base;
+            const dimensionName = playerClan.dimension || 'overworld';
+            
+            system.run(() => {
+                try {
+                    player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension(dimensionName) });
+                    player.sendMessage(`${playerClan.color}[CLAN] §aVoce foi teleportado para a base ${playerClan.name}!`);
+                } catch (e) {
+                    // Se falhar o TP (ex: chunk descarregado), devolve o dinheiro
+                    addPlayerScore(player, 'coins', cost);
+                    player.sendMessage('§cErro ao teleportar. Custo devolvido.');
+                }
+            });
+        } else {
+            const currentObj = world.scoreboard.getObjective('coins');
+            console.warn(`[DEBUG-BASE-ERRO] Falha ao adicionar score. Objetivo existe: ${!!currentObj}`);
+            player.sendMessage('§cErro ao processar pagamento. Verifique se o placar "coins" existe.');
+        }
+    }
 
-        // --- COMANDOS DE DEBUG (TOTENS) ---
-    if (msgLow.startsWith('!tpbase ')) {
+
+    // --- COMANDOS DE ADMIN (TELEPORTE E DEBUG) ---
+    if (msgLow.startsWith('!tpbase ') || (msgLow.startsWith('!base ') && msgLow.split(' ').length > 1)) {
         event.cancel = true;
-        if (!checkAdmin(player)) return;
+        // Staff e Admin podem usar
+        const isStaff = player.hasTag(CLANS.staff.tag);
+        if (!checkAdmin(player) && !isStaff) return;
+        
         const clanKey = msgLow.split(' ')[1];
         const clan = CLANS[clanKey];
         if (!clan) {
@@ -860,7 +996,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
         player.teleport(clan.base, { dimension: world.getDimension(clan.dimension || 'overworld') });
-        player.sendMessage(`§aTeleportado para a base do clã ${clanKey}`);
+        player.sendMessage(`§a[ADMIN] Teleportado para a base do clã ${clanKey}`);
         return;
     }
 
@@ -1106,6 +1242,49 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        if (message.startsWith('!setrei ')) {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+            
+            const targetName = message.substring(8).replace(/"/g, '').trim();
+            const target = world.getAllPlayers().find(p => p.name === targetName);
+            
+            if (!target) {
+                player.sendMessage(`§c[ERRO] Jogador "${targetName}" nao encontrado!`);
+                return;
+            }
+            
+            // Descobrir clã do alvo
+            let targetClan = null;
+            for (const key in CLANS) {
+                if (target.hasTag(CLANS[key].tag)) {
+                    targetClan = CLANS[key];
+                    break;
+                }
+            }
+            
+            if (!targetClan || targetClan.tag === 'clan_staff' || targetClan.tag === 'clan_default') {
+                player.sendMessage(`§c[ERRO] O Rei deve pertencer a uma das 4 Nacoes!`);
+                return;
+            }
+            
+            // Remover tag de rei de QUALQUER UM na mesma nação
+            for (const p of world.getAllPlayers()) {
+                if (p.hasTag(targetClan.tag) && p.hasTag('clan_king')) {
+                    p.removeTag('clan_king');
+                    p.sendMessage(`§c[AVISO] Voce nao e mais o Rei da ${targetClan.name}.`);
+                }
+            }
+            
+            // Dar a tag para o novo rei
+            target.addTag('clan_king');
+            player.sendMessage(`§a[SUCESSO] ${target.name} agora e o Rei da ${targetClan.name}!`);
+            target.sendMessage(`§6§l[COROACAO] §eVoce foi coroado Rei da ${targetClan.color}${targetClan.name}§e!`);
+            
+            system.runTimeout(() => updatePlayerNames(), 20);
+            return;
+        }
+
         if (message === '!debug') {
             event.cancel = true;
             if (!checkAdmin(player)) return;
@@ -1125,9 +1304,10 @@ world.beforeEvents.chatSend.subscribe((event) => {
             for (const p of world.getAllPlayers()) {
                 for (const key in CLANS) if (p.hasTag(CLANS[key].tag)) p.removeTag(CLANS[key].tag);
                 p.addTag(newClan.tag);
-                p.nameTag = `${newClan.color}[${newClan.name}]\n${p.name}`;
+                const rank = getRank(p);
+                p.nameTag = `${newClan.color}${rank} da ${newClan.name}\n${newClan.color}${p.name}`;
             }
-            player.sendMessage(`§aTodos movidos para ${newClan.name}!`);
+            player.sendMessage(`§aTodos movidos para a ${newClan.name}!`);
             return;
         }
 
@@ -1166,7 +1346,8 @@ world.beforeEvents.chatSend.subscribe((event) => {
             const newClan = CLANS[clanKey];
             for (const key in CLANS) if (target.hasTag(CLANS[key].tag)) target.removeTag(CLANS[key].tag);
             target.addTag(newClan.tag);
-            target.nameTag = `${newClan.color}[${newClan.name}]\n${target.name}`;
+            const rank = getRank(target);
+            target.nameTag = `${newClan.color}${rank} da ${newClan.name}\n${newClan.color}${target.name}`;
             
             player.sendMessage(`§a[SUCESSO] ${targetName} foi movido para o cla ${newClan.color}${newClan.name}§a!`);
             target.sendMessage(`§aVoce foi movido para o cla ${newClan.color}${newClan.name}§a!`);
@@ -1224,10 +1405,11 @@ world.beforeEvents.chatSend.subscribe((event) => {
                     
                     // Adicionar nova tag e atualizar nome
                     target.addTag(newClan.tag);
-                    target.nameTag = `${newClan.color}[${newClan.name}]\n${target.name}`;
+                    const rank = getRank(target);
+                    target.nameTag = `${newClan.color}${rank} da ${newClan.name}\n${newClan.color}${target.name}`;
                     
                     player.sendMessage(`§a[OK] ${targetName} -> ${newClan.color}${newClan.name}`);
-                    target.sendMessage(`§aVoce agora e do cla ${newClan.color}${newClan.name}§a!`);
+                    target.sendMessage(`§aVoce agora faz parte da ${newClan.color}${newClan.name}§a!`);
                     
                     console.warn(`[CLANS] ${targetName} movido para ${clanKey} com sucesso.`);
                 } catch (error) {
@@ -1332,16 +1514,12 @@ function openClanShopCategory(player, category) {
 }
 
 function getScore(player) {
-    try {
-        const objective = world.scoreboard.getObjective('coins');
-        return objective?.getScore(player) ?? 0;
-    } catch { return 0; }
+    return getPlayerScore(player, 'coins');
 }
 
 // 4. Lógica de Compra
 function buyItem(player, item, category) {
-    const objective = world.scoreboard.getObjective('coins');
-    const balance = objective?.getScore(player) ?? 0;
+    const balance = getPlayerScore(player, 'coins');
     
     console.warn(`[DEBUG] Tentativa de compra: Player=${player.name}, Saldo=${balance}, Preco=${item.price}`);
 
@@ -1351,16 +1529,15 @@ function buyItem(player, item, category) {
         return;
     }
     
-    objective.addScore(player, -item.price);
-    
-    const commands = item.command.split('\n');
-    for (const cmd of commands) {
-        if (cmd.trim().length > 0) {
-            player.runCommand(cmd.trim());
+    if (addPlayerScore(player, 'coins', -item.price)) {
+        const commands = item.command.split('\n');
+        for (const cmd of commands) {
+            if (cmd.trim().length > 0) player.runCommand(cmd.trim());
         }
+        player.sendMessage(`§aVoce comprou §f${item.name} §apor §e${item.price} Coins§a!`);
+    } else {
+        player.sendMessage('§cErro na transacao. Compra cancelada.');
     }
-    
-    player.sendMessage(`§aVoce comprou §f${item.name} §apor §e${item.price} Coins§a!`);
     
     system.run(() => openClanShopCategory(player, category));
 }
