@@ -422,20 +422,20 @@ system.runInterval(() => {
             // 🟢 CLÃ GREEN: Visão Noturna
             if (player.hasTag(CLANS.green.tag)) {
                 const nv = player.getEffect('night_vision');
-                if (!nv || nv.duration < 220) player.addEffect('night_vision', 24000, { showParticles: true });
+                if (!nv || nv.duration < 220) player.addEffect('night_vision', 24000, { showParticles: false });
             }
 
             // 🔵 CLÃ BLUE: Respiração Aquática + Visão Submersa
             if (player.hasTag(CLANS.blue.tag)) {
                 // Respiração
                 const wb = player.getEffect('water_breathing');
-                if (!wb || wb.duration < 220) player.addEffect('water_breathing', 24000, { showParticles: true });
+                if (!wb || wb.duration < 220) player.addEffect('water_breathing', 24000, { showParticles: false });
                 
                 // Visão Submersa (Night Vision na água)
                 const isUnderwater = player.isInWater;
                 const nv = player.getEffect('night_vision');
                 if (isUnderwater) {
-                    if (!nv || nv.duration < 220) player.addEffect('night_vision', 24000, { showParticles: true });
+                    if (!nv || nv.duration < 220) player.addEffect('night_vision', 24000, { showParticles: false });
                 } else if (nv && nv.duration > 20000) { // Remover se não estiver na água (e for o nosso efeito longo)
                     player.removeEffect('night_vision');
                 }
@@ -444,7 +444,7 @@ system.runInterval(() => {
             // 🔴 CLÃ RED: Resistência ao Fogo
             if (player.hasTag(CLANS.red.tag)) {
                 const fr = player.getEffect('fire_resistance');
-                if (!fr || fr.duration < 220) player.addEffect('fire_resistance', 24000, { showParticles: true });
+                if (!fr || fr.duration < 220) player.addEffect('fire_resistance', 24000, { showParticles: false });
             }
 
             // --- DEFESA NOS TOTENS (TODOS OS CLÃS) ---
@@ -460,7 +460,7 @@ system.runInterval(() => {
                 if (player.hasTag(clan.tag) && inThisBase) {
                     nearOwnTotem = true;
                     const res = player.getEffect('resistance');
-                    if (!res || res.amplifier < 250) player.addEffect('resistance', 300, { amplifier: 255, showParticles: true });
+                    if (!res || res.amplifier < 250) player.addEffect('resistance', 300, { amplifier: 255, showParticles: false });
                 }
             }
 
