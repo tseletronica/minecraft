@@ -131,17 +131,25 @@ function getPlayerScore(player, objectiveId) {
         const obj = world.scoreboard.getObjective(objectiveId);
         if (!obj) return 0;
         
-        // 1. Tentar encontrar o participante pelo nome (Username) na lista oficial
-        // Este é o método mais preciso no Bedrock para evitar duplicatas de identidade
-        const participant = obj.getParticipants().find(p => p.displayName === player.name);
-        if (participant) return obj.getScore(participant) ?? 0;
+        // 🛠️ UNIFICAÇÃO: Tentar pegar o maior score entre todos os fragmentos (Nome ou Objeto)
+        let maxScore = 0;
+        let found = false;
+        
+        for (const p of obj.getParticipants()) {
+            if (p.displayName === player.name) {
+                const s = obj.getScore(p);
+                if (s !== undefined) {
+                    maxScore = Math.max(maxScore, s);
+                    found = true;
+                }
+            }
+        }
+        
+        if (found) return maxScore;
 
-        // 2. Fallback pela identidade interna
-        const identity = player.scoreboardIdentity;
-        if (identity) return obj.getScore(identity) ?? 0;
-
-        // 3. Fallback final pelo nome string
-        return obj.getScore(player.name) ?? 0;
+        // Fallback: Tentar pelo objeto direto
+        const score = obj.getScore(player);
+        return score ?? 0;
     } catch (e) {
         return 0;
     }
@@ -150,27 +158,22 @@ function getPlayerScore(player, objectiveId) {
 // Helper centralizado para adicionar scores de forma segura (O mais Robusto possível)
 function addPlayerScore(player, objectiveId, amount) {
     try {
-        // Tentar primeiro pelo comando nativo (É o mais estável de todos no Bedrock)
-        const sign = amount >= 0 ? 'add' : 'remove';
-        const val = Math.abs(amount);
-        player.runCommand(`scoreboard players ${sign} @s ${objectiveId} ${val}`);
-        return true;
-    } catch (e) {
+        const obj = world.scoreboard.getObjective(objectiveId);
+        if (!obj) return false;
+
+        // 🛠️ UNIFICAÇÃO: Tentar adicionar ao OBJETO primeiro (Evita duplicatas no ranking)
         try {
-            // Fallback para Script API se o comando falhar (ex: em dimensões bugadas)
-            const obj = world.scoreboard.getObjective(objectiveId);
-            if (!obj) return false;
-            
-            const identity = player.scoreboardIdentity;
-            if (identity) {
-                obj.addScore(identity, amount);
-                return true;
-            }
-            obj.addScore(player.name, amount);
+            obj.addScore(player, amount);
             return true;
-        } catch (e2) {
-            return false;
+        } catch (e1) {
+            // Plano B: Comando nativo (Raro precisar se for player online)
+            const sign = amount >= 0 ? 'add' : 'remove';
+            const val = Math.abs(amount);
+            player.runCommand(`scoreboard players ${sign} @s ${objectiveId} ${val}`);
+            return true;
         }
+    } catch (e) {
+        return false;
     }
 }
 
@@ -202,21 +205,47 @@ system.runInterval(() => {
         for (const player of world.getAllPlayers()) {
             const playerName = player.name;
             try {
-                // Forçar criação da identidade no placar (Comando é mais robusto para isso)
-                player.runCommand(`scoreboard players add @s coins 0`);
-                player.runCommand(`scoreboard players add @s player_kills 0`);
+                // 🛠️ MIGRATION/CLEANUP: Unificar identidades fragmentadas
+                // Se houver score no "Nome (String)" e no "Objeto (Entity)", somar tudo no Objeto
+                const killObj = world.scoreboard.getObjective('player_kills');
+                if (killObj) {
+                    const allParticipants = killObj.getParticipants();
+                    let stringScore = 0;
+                    let hasStringFragment = false;
 
-                const currentCoins = getPlayerScore(player, 'coins');
-                const currentKills = getPlayerScore(player, 'player_kills');
+                    for (const p of allParticipants) {
+                        // Se o participante for apenas uma String (sem entidade vinculada) e tiver o nome do player
+                        if (p.displayName === player.name) {
+                            try {
+                                // Verificar se não é o próprio objeto (Bedrock as vezes mostra o nome para a entidade também)
+                                if (!p.getEntity()) {
+                                    stringScore = killObj.getScore(p) || 0;
+                                    if (stringScore > 0) {
+                                        hasStringFragment = true;
+                                        killObj.removeParticipant(p); // Limpar fragmento
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                    }
+
+                    if (hasStringFragment) {
+                        addPlayerScore(player, 'player_kills', stringScore);
+                        console.warn(`[CLANS] Migrando ${stringScore} abates fragmentados para ${player.name}`);
+                    }
+                }
+
+                const currentCoins = getPlayerScore(player, 'coins') ?? 0;
                 
-                // Backup de Segurança (Dynamic Property)
-                if (currentCoins > 0) world.setDynamicProperty(`score_coins_${playerName}`, currentCoins);
-                if (currentKills > 0) world.setDynamicProperty(`score_kills_${playerName}`, currentKills);
-                
-                // Restaurar se o placar for resetado
+                // BACKUP: Se o valor no placar for MAIOR que o backup, atualiza o backup
                 const savedCoins = world.getDynamicProperty(`score_coins_${playerName}`) ?? 0;
-                if (currentCoins === 0 && savedCoins > 0) {
-                    addPlayerScore(player, 'coins', savedCoins);
+
+                if (currentCoins > savedCoins) world.setDynamicProperty(`score_coins_${playerName}`, currentCoins);
+                
+                // RESTAURAÇÃO: Apenas Moedas (Isolando a economia do combate)
+                if (currentCoins < savedCoins) {
+                    const diff = savedCoins - currentCoins;
+                    addPlayerScore(player, 'coins', diff);
                 }
             } catch (e) {}
         }
@@ -231,7 +260,7 @@ world.afterEvents.entityDie.subscribe((event) => {
     // Verificar se foi um player matando outro player
     if (victim.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
         try {
-            const currentKills = getPlayerScore(damager, 'player_kills');
+            const currentKills = getPlayerScore(damager, 'player_kills') ?? 0;
             if (addPlayerScore(damager, 'player_kills', 1)) {
                 // Feedback imediato no chat (Calculado localmente para ser instantâneo)
                 damager.sendMessage(`§a[COMBATE] Voce abateu ${victim.name}! Total de abates: ${currentKills + 1}`);
@@ -843,6 +872,56 @@ world.beforeEvents.chatSend.subscribe((event) => {
             player.sendMessage(`§fNome: §b${player.name}`);
             player.sendMessage(`§6Saldo: §a${score} Coins`);
             player.sendMessage(`§e--------------------------------`);
+            return;
+        }
+
+        // COMANDO: TOP ABATES (RANKING)
+        if (msgLow === '!top' || msgLow === '!ranking' || msgLow === '!abates') {
+            event.cancel = true;
+            try {
+                const killObj = world.scoreboard.getObjective('player_kills');
+                if (!killObj) {
+                    player.sendMessage('§cErro: Placar de abates não encontrado.');
+                    return;
+                }
+
+                // 🛠️ DEDUPLICAÇÃO E LIMPEZA: Unificar scores com o mesmo nome
+                const rawScores = killObj.getParticipants().map(p => ({
+                    name: p.displayName,
+                    score: killObj.getScore(p)
+                }));
+
+                const unifiedMap = new Map();
+                for (const entry of rawScores) {
+                    if (entry.name.startsWith('*') || entry.name.startsWith('#')) continue; // Pular sistema
+                    const currentMax = unifiedMap.get(entry.name) || 0;
+                    if (entry.score > currentMax) unifiedMap.set(entry.name, entry.score);
+                }
+
+                const scores = Array.from(unifiedMap.entries())
+                    .map(([name, score]) => ({ name, score }))
+                    .sort((a, b) => b.score - a.score);
+
+                const playerKills = getPlayerScore(player, 'player_kills') ?? 0;
+
+                player.sendMessage('§e=== RANKING DE ABATES ===');
+                
+                // Mostrar Top 3
+                const colors = ['§6§l🥇', '§7§l🥈', '§6§l🥉']; 
+                for (let i = 0; i < 3; i++) {
+                    if (scores[i]) {
+                        player.sendMessage(`${colors[i]} §f${i + 1}. ${scores[i].name} §7- §e${scores[i].score} abates`);
+                    } else {
+                        player.sendMessage(`${colors[i]} §f${i + 1}. §8---`);
+                    }
+                }
+
+                player.sendMessage('§e------------------------');
+                player.sendMessage(`§fSeu Rank: §a${playerKills} abates`);
+                player.sendMessage('§e========================');
+            } catch (e) {
+                player.sendMessage('§cErro ao gerar ranking.');
+            }
             return;
         }
 
