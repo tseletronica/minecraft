@@ -783,13 +783,21 @@ world.beforeEvents.entityHurt.subscribe((event) => {
         return;
     }
 
-    // 🛡️ STAFF: Não causa dano a NINGUÉM nem a NADA (Exceto se for staff_adm)
+    // 🛡️ STAFF: Proteção de Dano
     if (damager && damager.typeId === 'minecraft:player' && damager.hasTag(CLANS.staff.tag)) {
+        // 1. Se o ALVO for outro PLAYER, a Staff NUNCA pode bater (Pacifismo Total)
+        if (victim.typeId === 'minecraft:player') {
+            event.cancel = true;
+            return;
+        }
+
+        // 2. Se o ALVO for um MOB, apenas Administradores da Staff podem bater
         if (!damager.hasTag('staff_adm')) {
             event.cancel = true;
             return;
         }
     }
+
 
 
 
