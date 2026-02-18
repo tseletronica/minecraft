@@ -533,9 +533,8 @@ world.afterEvents.playerSpawn.subscribe((event) => {
         // É a primeira vez do jogador: mostrar seleção única
         player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã inicial.`);
         
-        // Atribuir Nômade temporário até escolher
-        player.addTag(CLANS.default.tag);
-        player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
+        // NÃO atribuir Nômade ainda - esperar escolha do menu
+        player.nameTag = `§7[ Aguardando Escolha ]\n§f${player.name}`;
         
         system.runTimeout(() => {
             if (player.isValid) showClanSelectionMenu(player);
@@ -1021,6 +1020,34 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 const count = world.getAllPlayers().filter(p => p.hasTag(clan.tag)).length;
                 player.sendMessage(`${clan.color}[${clan.name}]§7: ${count} online`);
             }
+            return;
+        }
+
+        // Comando para forçar menu de seleção (para jogadores presos como Nomade)
+        if (msgLow === '!escolherclan' || msgLow === '!escolhercla') {
+            event.cancel = true;
+            
+            // Verificar se já tem um clan real (não é Nomade)
+            let hasRealClan = false;
+            for (const key in CLANS) {
+                if (key !== 'default' && key !== 'staff' && player.hasTag(CLANS[key].tag)) {
+                    hasRealClan = true;
+                    break;
+                }
+            }
+            
+            if (hasRealClan) {
+                player.sendMessage('§cVoce ja esta em um clan! Use !clan para verificar.');
+                return;
+            }
+            
+            // Remover tag de Nomade se existir
+            if (player.hasTag(CLANS.default.tag)) {
+                player.removeTag(CLANS.default.tag);
+            }
+            
+            player.sendMessage('§7[SISTEMA] Escolha seu clã agora:');
+            showClanSelectionMenu(player);
             return;
         }
 
