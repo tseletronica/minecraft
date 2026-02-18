@@ -522,25 +522,25 @@ world.afterEvents.playerSpawn.subscribe((event) => {
     
     // Verificar situação do clã
     let currentClanKey = null;
-    const playerTags = player.getTags();
-    console.warn(`[CLANS DEBUG] Jogador ${player.name} entrou com tags: [${playerTags.join(', ')}]`);
-    
     for (const key in CLANS) {
         if (player.hasTag(CLANS[key].tag)) {
             currentClanKey = key;
-            console.warn(`[CLANS DEBUG] Jogador ${player.name} já tem clan: ${key}`);
             break;
         }
     }
     
     if (!currentClanKey) {
-        // Jogador entra sem clan - normal, sem forçar escolha
-        player.sendMessage(`§7[SISTEMA] Bem-vindo ao servidor!`);
-        player.sendMessage(`§7Use !escolherclan para selecionar um clan quando quiser.`);
+        // É a primeira vez do jogador: mostrar seleção única
+        player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã inicial.`);
         
-        // Atribuir Nomade (jogador normal)
-        player.addTag(CLANS.default.tag);
-        player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
+        // NÃO atribuir Nômade ainda - esperar escolha do menu
+        player.nameTag = `§7[ Aguardando Escolha ]\n§f${player.name}`;
+        
+        system.runTimeout(() => {
+            if (player.isValid) {
+                showClanSelectionMenu(player);
+            }
+        }, 100);
     } else {
         // Já tem um clã real: Apenas Boas-Vindas
         const clan = CLANS[currentClanKey];
@@ -554,11 +554,7 @@ world.afterEvents.playerSpawn.subscribe((event) => {
 
 // Menu de seleção de clã
 async function showClanSelectionMenu(player) {
-    console.warn(`[CLANS DEBUG] showClanSelectionMenu chamado para ${player.name}`);
-    if (!player) {
-        console.warn(`[CLANS DEBUG] Player é null/undefined`);
-        return;
-    }
+    if (!player) return;
     
     // LIMPEZA PREVENTIVA DE TAGS DE NPC (Caso o player tenha pego por erro de scripts anteriores)
     try {
@@ -566,36 +562,28 @@ async function showClanSelectionMenu(player) {
         for (const t of npcTags) if (player.hasTag(t)) player.removeTag(t);
     } catch(e) {}
 
-    console.warn(`[CLANS DEBUG] Criando formulário para ${player.name}`);
     const form = new ActionFormData()
-        .title('§6Escolha seu Cla!')
-        .body('§7Bem-vindo ao servidor!\n§7Escolha um cla para fazer parte:');
+        .title('§6§lESCOLHA ÚNICA DE CLÃ!')
+        .body('§7Bem-vindo ao servidor!\n\n§e§lATENÇÃO:§r\n§7Esta escolha é §cPERMANENTE§7!\n§7Apenas Admins podem mudar depois.\n\n§7Escolha seu clã:');
     
     form.button(`${CLANS.red.color}[${CLANS.red.name}]\n§7Poder do Fogo`);
     form.button(`${CLANS.blue.color}[${CLANS.blue.name}]\n§7Poder da Água`);
     form.button(`${CLANS.green.color}[${CLANS.green.name}]\n§7Poder da Terra`);
     form.button(`${CLANS.yellow.color}[${CLANS.yellow.name}]\n§7Poder do Vento`);
     
-    console.warn(`[CLANS DEBUG] Mostrando formulário para ${player.name}`);
     const response = await form.show(player);
-    console.warn(`[CLANS DEBUG] Resposta do formulário para ${player.name}:`, response);
+    if (!player) return;
     
-    if (!player) {
-        console.warn(`[CLANS DEBUG] Player inválido após formulário`);
-        return;
-    }
-    
-    // CASO CANCELE: Vira Nômade permanentemente (é a 6ª opção automática)
+    // CASO CANCELE: Vira Nômade permanentemente (escolha única foi perdida)
     if (response.canceled) {
-        console.warn(`[CLANS DEBUG] ${player.name} cancelou, virando Nomade`);
         player.addTag(CLANS.default.tag);
         player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
-        player.sendMessage(`§e[SISTEMA] Você escolheu seguir como §f${CLANS.default.name}§e.`);
-        player.sendMessage(`§7(Agora, trocas de clã só podem ser feitas por Staff/Admin)`);
+        player.sendMessage(`§e[SISTEMA] Você §ccancelou§e a escolha de clan!`);
+        player.sendMessage(`§7Agora você é §f${CLANS.default.name}§7 permanentemente.`);
+        player.sendMessage(`§7Apenas um §cAdmin§7 pode mudar seu clan.`);
         return;
     }
     
-    console.warn(`[CLANS DEBUG] ${player.name} escolheu opção: ${response.selection}`);
     const clanKeys = ['red', 'blue', 'green', 'yellow'];
     const selectedClan = CLANS[clanKeys[response.selection]];
     
@@ -606,7 +594,9 @@ async function showClanSelectionMenu(player) {
     const rank = getRank(player);
     player.nameTag = `${selectedClan.color}[ ${rank} ]\n§f${player.name}`;
     
-    player.sendMessage(`${selectedClan.color}[${selectedClan.name}] §aVoce entrou no cla ${selectedClan.color}${selectedClan.name}§a!`);
+    player.sendMessage(`${selectedClan.color}§lESCOLHA CONFIRMADA!`);
+    player.sendMessage(`${selectedClan.color}Você entrou permanentemente no clan ${selectedClan.name}!`);
+    player.sendMessage(`§7Esta escolha é §cPERMANENTE§7. Apenas Admins podem mudar.`);
     world.sendMessage(`${selectedClan.color}${player.name} §7entrou no ${selectedClan.color}[${selectedClan.name}]§7!`);
 }
 
@@ -1038,11 +1028,16 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
-        // Comando para forçar menu de seleção (para jogadores presos como Nomade)
-        if (msgLow === '!escolherclan' || msgLow === '!escolhercla') {
+        // Comando para Admin forçar menu de seleção (apenas para novos jogadores ou Nomades)
+        if (msgLow === '!forcarescolha' || msgLow === '!forcechoose') {
             event.cancel = true;
             
-            // Verificar se já tem um clan real (não é Nomade)
+            if (!checkAdmin(player)) {
+                player.sendMessage('§cApenas Admins podem forçar escolha de clan!');
+                return;
+            }
+            
+            // Verificar se já tem um clan real
             let hasRealClan = false;
             for (const key in CLANS) {
                 if (key !== 'default' && key !== 'staff' && player.hasTag(CLANS[key].tag)) {
@@ -1052,7 +1047,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             }
             
             if (hasRealClan) {
-                player.sendMessage('§cVoce ja esta em um clan! Use !clan para verificar.');
+                player.sendMessage('§cVocê já está em um clan real! Use !setclan para mudar.');
                 return;
             }
             
@@ -1061,7 +1056,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 player.removeTag(CLANS.default.tag);
             }
             
-            player.sendMessage('§7[SISTEMA] Escolha seu clã agora:');
+            player.sendMessage('§7[ADMIN] Forçando menu de escolha de clan...');
             showClanSelectionMenu(player);
             return;
         }
