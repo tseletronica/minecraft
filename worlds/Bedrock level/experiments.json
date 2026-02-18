@@ -1,0 +1,8 @@
+{
+  "experiments": {
+    "data_driven_items": false,
+    "upcoming_creator_features": true,
+    "beta_apis": true,
+    "scripting": true
+  }
+}

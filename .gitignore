@@ -8,7 +8,7 @@ bedrock_server.exe
 *.zip
 
 # World data (Can be large)
-worlds/
+# worlds/
 
 # Specific server files (temporary or generated)
 packet-statistics.txt

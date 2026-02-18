@@ -1,0 +1,18 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "clan:totem_red",
+            "materials": { "default": "entity_alphatest" },
+            "textures": {
+                "default": "textures/entity/diamondrobogolem"
+            },
+            "geometry": { "default": "geometry.humanoid" },
+            "render_controllers": ["controller.render.humanoid"],
+            "spawn_egg": {
+                "base_color": "#ff0000",
+                "overlay_color": "#ffffff"
+            }
+        }
+    }
+}

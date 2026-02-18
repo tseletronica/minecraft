@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Sistema de Clãs - Recursos",
+    "description": "Texturas e modelos para o sistema de clãs",
+    "uuid": "d5f6e7a8-b9c0-4d1e-af23-4c5d6e7f8a9b",
+    "version": [1, 0, 14],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "d3e4f5a6-b7c8-9012-cdef-234567890123",
+      "version": [1, 0, 14]
+    }
+  ]
+}
