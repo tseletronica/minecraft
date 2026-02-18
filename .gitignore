@@ -1,14 +1,14 @@
 # Minecraft Bedrock Gitignore
 
 # Binaries
-*.exe
+bedrock_server.exe
 *.dll
 *.pdb
 *.log
 *.zip
 
 # World data (Can be large)
-# worlds/
+worlds/
 
 # Specific server files (temporary or generated)
 packet-statistics.txt

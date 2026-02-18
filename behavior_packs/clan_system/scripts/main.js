@@ -2,6 +2,15 @@ import { world, system } from '@minecraft/server';
 import { ActionFormData } from '@minecraft/server-ui';
 import { SHOP_CATEGORIES } from './config.js';
 import { executeArenaMaintenanceStep, SNIPER_LOCATIONS } from './arena.js';
+import { 
+    buildCastleCleanup,
+    buildCastleQuadrant,
+    buildCastleDetails,
+    buildCastleKeep,
+    getCastleStatus,
+    loadCastleStructure,
+    saveStructure
+} from './castle.js';
 
 
 // Configuração dos clãs e coordenadas das bases (Onde os totens SEMPRE devem estar)
@@ -1154,6 +1163,70 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 targetPlayer.sendMessage(`§aVoce recebeu §e${amount} Coins §ade §f${player.name}§a.`);
                 console.warn(`[ECONOMIA] ${player.name} enviou ${amount} para ${targetName}`);
             }
+            return;
+        }
+
+        if (msgLow === '!castelostatus') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+            const status = getCastleStatus();
+            player.sendMessage('§e=== STATUS DO CASTELO ===');
+            player.sendMessage(`§fSistema: ${status.busy ? '§cOCUPADO §7(Gerando...)' : '§aLIVRE'}`);
+            player.sendMessage(`§fÚltima Parte: §7${status.lastPart}`);
+            player.sendMessage('§e========================');
+            return;
+        }
+
+        if (msgLow.startsWith('!gerar ') || msgLow === '!gerar') {
+            event.cancel = true;
+            if (!checkAdmin(player)) {
+                player.sendMessage('§cVoce nao tem permissao de Admin para gerar estruturas!');
+                return;
+            }
+            
+            let name = "";
+            let yOffset = 0;
+            const quotedMatch = message.match(/!gerar\s+"([^"]+)"(?:\s+(-?\d+))?/i);
+            if (quotedMatch) {
+                name = quotedMatch[1];
+                yOffset = quotedMatch[2] ? parseInt(quotedMatch[2]) : 0;
+            } else {
+                const rest = message.substring(7).trim();
+                const parts = rest.split(' ');
+                const lastPart = parts[parts.length - 1];
+                if (!isNaN(parseInt(lastPart)) && parts.length > 1) {
+                    yOffset = parseInt(lastPart);
+                    name = parts.slice(0, -1).join(' ');
+                } else {
+                    name = rest;
+                }
+            }
+
+            if (!name) return player.sendMessage('§cUse: !gerar <nome_da_estrutura> [y_offset]');
+            
+            const loc = player.location;
+            const x = Math.floor(loc.x);
+            const y = Math.floor(loc.y) + yOffset;
+            const z = Math.floor(loc.z);
+
+            player.sendMessage(`§e[OBRAS] Tentando carregar: §f"${name}"`);
+            player.sendMessage(`§e[OBRAS] Coords: §f${x}, ${y}, ${z}`);
+            
+            system.run(() => {
+                const started = loadCastleStructure(name, x, y, z, player);
+                if (!started) player.sendMessage('§c[ERRO] O sistema de obras está ocupado!');
+            });
+            return;
+        }
+
+        if (msgLow === '!salvararena') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+            
+            player.sendMessage('§e[OBRAS] Iniciando salvamento da Arena (60x60)...');
+            system.run(() => {
+                saveStructure("arena_pvp", -200, 50, 64, -141, 100, 123, player);
+            });
             return;
         }
 
