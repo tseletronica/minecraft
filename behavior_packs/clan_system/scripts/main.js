@@ -522,23 +522,25 @@ world.afterEvents.playerSpawn.subscribe((event) => {
     
     // Verificar situação do clã
     let currentClanKey = null;
+    const playerTags = player.getTags();
+    console.warn(`[CLANS DEBUG] Jogador ${player.name} entrou com tags: [${playerTags.join(', ')}]`);
+    
     for (const key in CLANS) {
         if (player.hasTag(CLANS[key].tag)) {
             currentClanKey = key;
+            console.warn(`[CLANS DEBUG] Jogador ${player.name} já tem clan: ${key}`);
             break;
         }
     }
     
     if (!currentClanKey) {
-        // É a primeira vez do jogador: mostrar seleção única
-        player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã inicial.`);
+        // Jogador entra sem clan - normal, sem forçar escolha
+        player.sendMessage(`§7[SISTEMA] Bem-vindo ao servidor!`);
+        player.sendMessage(`§7Use !escolherclan para selecionar um clan quando quiser.`);
         
-        // NÃO atribuir Nômade ainda - esperar escolha do menu
-        player.nameTag = `§7[ Aguardando Escolha ]\n§f${player.name}`;
-        
-        system.runTimeout(() => {
-            if (player.isValid) showClanSelectionMenu(player);
-        }, 100); 
+        // Atribuir Nomade (jogador normal)
+        player.addTag(CLANS.default.tag);
+        player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
     } else {
         // Já tem um clã real: Apenas Boas-Vindas
         const clan = CLANS[currentClanKey];
@@ -552,7 +554,11 @@ world.afterEvents.playerSpawn.subscribe((event) => {
 
 // Menu de seleção de clã
 async function showClanSelectionMenu(player) {
-    if (!player) return;
+    console.warn(`[CLANS DEBUG] showClanSelectionMenu chamado para ${player.name}`);
+    if (!player) {
+        console.warn(`[CLANS DEBUG] Player é null/undefined`);
+        return;
+    }
     
     // LIMPEZA PREVENTIVA DE TAGS DE NPC (Caso o player tenha pego por erro de scripts anteriores)
     try {
@@ -560,6 +566,7 @@ async function showClanSelectionMenu(player) {
         for (const t of npcTags) if (player.hasTag(t)) player.removeTag(t);
     } catch(e) {}
 
+    console.warn(`[CLANS DEBUG] Criando formulário para ${player.name}`);
     const form = new ActionFormData()
         .title('§6Escolha seu Cla!')
         .body('§7Bem-vindo ao servidor!\n§7Escolha um cla para fazer parte:');
@@ -569,11 +576,18 @@ async function showClanSelectionMenu(player) {
     form.button(`${CLANS.green.color}[${CLANS.green.name}]\n§7Poder da Terra`);
     form.button(`${CLANS.yellow.color}[${CLANS.yellow.name}]\n§7Poder do Vento`);
     
+    console.warn(`[CLANS DEBUG] Mostrando formulário para ${player.name}`);
     const response = await form.show(player);
-    if (!player) return;
+    console.warn(`[CLANS DEBUG] Resposta do formulário para ${player.name}:`, response);
+    
+    if (!player) {
+        console.warn(`[CLANS DEBUG] Player inválido após formulário`);
+        return;
+    }
     
     // CASO CANCELE: Vira Nômade permanentemente (é a 6ª opção automática)
     if (response.canceled) {
+        console.warn(`[CLANS DEBUG] ${player.name} cancelou, virando Nomade`);
         player.addTag(CLANS.default.tag);
         player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
         player.sendMessage(`§e[SISTEMA] Você escolheu seguir como §f${CLANS.default.name}§e.`);
@@ -581,6 +595,7 @@ async function showClanSelectionMenu(player) {
         return;
     }
     
+    console.warn(`[CLANS DEBUG] ${player.name} escolheu opção: ${response.selection}`);
     const clanKeys = ['red', 'blue', 'green', 'yellow'];
     const selectedClan = CLANS[clanKeys[response.selection]];
     

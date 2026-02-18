@@ -10,6 +10,11 @@ bedrock_server.exe
 # World data (Can be large)
 # worlds/
 
+# Database files (LevelDB - VERY IMPORTANT)
+worlds/*/db/
+worlds/**/db/
+**/db/
+
 # Specific server files (temporary or generated)
 packet-statistics.txt
 packetlimitconfig.json
