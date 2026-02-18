@@ -328,6 +328,8 @@ world.afterEvents.entityDie.subscribe((event) => {
 const lastAttacker = new Map();
 // Rastrear se o jogador estava em uma base (para alertas)
 const playerBaseState = new Map();
+// Controle global para evitar múltiplos menus
+const activeMenus = new Set();
 
 // Detectar quando um jogador ataca outro
 world.afterEvents.entityHitEntity.subscribe((event) => {
@@ -413,7 +415,7 @@ if (damageNotifier) {
     //------------------------------------------
     if (damager?.typeId === 'minecraft:player' && damager.hasTag(CLANS.red.tag)) {
         // 15% de chance de incendiar por 3 segundos
-        if (Math.random() < 0.15 && victim.isValid()) {
+        if (Math.random() < 0.15 && victim) {
             victim.setOnFire(3);
             damager.onScreenDisplay.setActionBar('§c🔥 LÂMINA DE LABAREDA! §7Inimigo incendiado.');
         }
@@ -504,8 +506,26 @@ system.runTimeout(() => {
 world.afterEvents.playerSpawn.subscribe((event) => {
     const player = event.player;
     
-    // Verificar se é o primeiro spawn
+    // Verificar se é o primeiro spawn E se o jogador realmente está no mundo
     if (!event.initialSpawn) return;
+    
+    // VERIFICAÇÃO ADICIONAL: Só ativar se jogador estiver válido e no mundo
+    if (!player || !player.isValid || player.isRemoved) {
+        console.warn(`[CLANS DEBUG] Jogador ${player?.name} não está válido - ignorando`);
+        return;
+    }
+    
+    // VERIFICAÇÃO: Só ativar se estiver na overworld (mundo principal)
+    if (player.dimension.id !== 'minecraft:overworld') {
+        console.warn(`[CLANS DEBUG] Jogador ${player.name} não está na overworld - ignorando`);
+        return;
+    }
+    
+    console.warn(`[CLANS DEBUG] ${player.name} deu spawn válido - ativando clans em 10 segundos`);
+    
+    // Marcar jogador como "aguardando ativação"
+    player.addTag('awaiting_clan_activation');
+    player.sendMessage(`§7[SISTEMA] Bem-vindo! O sistema de clans ativará em instantes...`);
     
     // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)
     system.runTimeout(() => {
@@ -518,43 +538,124 @@ world.afterEvents.playerSpawn.subscribe((event) => {
         } catch (e) {}
     }, 5);
     
+    // ATIVAR SISTEMA DE CLANS APÓS 10 SEGUNDOS
+    system.runTimeout(() => {
+        if (player && player.isValid && !player.isRemoved && player.hasTag('awaiting_clan_activation')) {
+            console.warn(`[CLANS DEBUG] Ativando sistema de clans para ${player.name} após 10 segundos`);
+            player.removeTag('awaiting_clan_activation');
+            activateClanSystem(player);
+        } else {
+            console.warn(`[CLANS DEBUG] Jogador ${player?.name} inválido no timeout - não ativando clans`);
+        }
+    }, 200); // 10 segundos
+});
 
+// Função separada para ativar o sistema de clans
+function activateClanSystem(player) {
+    console.warn(`[CLANS DEBUG] Ativando sistema de clans para ${player.name}`);
+    
+    // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)
+    system.runTimeout(() => {
+        try {
+            if (player.runCommandAsync) {
+                player.runCommandAsync('permission set @s member').catch(() => {});
+            } else if (player.runCommand) {
+                player.runCommand('permission set @s member');
+            }
+        } catch (e) {}
+    }, 5);
     
     // Verificar situação do clã
     let currentClanKey = null;
+    const playerTags = player.getTags();
+    console.warn(`[CLANS DEBUG] ${player.name} entrou com tags: [${playerTags.join(', ')}]`);
+    
     for (const key in CLANS) {
         if (player.hasTag(CLANS[key].tag)) {
             currentClanKey = key;
+            console.warn(`[CLANS DEBUG] ${player.name} já tem clan: ${key}`);
             break;
         }
     }
     
     if (!currentClanKey) {
-        // É a primeira vez do jogador: mostrar seleção única
-        player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã inicial.`);
+        console.warn(`[CLANS DEBUG] ${player.name} não tem clan - bloqueando até escolher`);
+        player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã para começar a jogar.`);
+        player.sendMessage(`§cVocê está bloqueado até escolher um clan!`);
         
-        // NÃO atribuir Nômade ainda - esperar escolha do menu
-        player.nameTag = `§7[ Aguardando Escolha ]\n§f${player.name}`;
+        // Congelar jogador IMEDIATAMENTE
+        player.addTag('clan_selection_locked');
+        player.addTag('movement_locked'); // Tag extra para bloqueio físico
+        player.nameTag = `§c[ BLOQUEADO ]\n§f${player.name}`;
         
+        // Teleportar para área de espera segura (no chão, altura segura)
+        try {
+            player.teleport({ x: 0, y: 64, z: 0 }, { dimension: world.getDimension('overworld') });
+            player.sendMessage(`§7Teleportado para área de espera...`);
+            
+            // Criar plataforma de vidro para o jogador não cair
+            try {
+                player.runCommandAsync('setblock ~ ~1 ~ glass');
+                player.runCommandAsync('setblock ~ ~2 ~ glass');
+            } catch(e) {}
+        } catch(e) {
+            console.warn(`[CLANS DEBUG] Erro ao teleportar ${player.name}:`, e);
+        }
+        
+        // NÃO aplicar levitação - deixar no chão para poder interagir com o menu
+        
+        // Mostrar menu imediatamente
         system.runTimeout(() => {
             if (player.isValid) {
+                console.warn(`[CLANS DEBUG] Timeout executado - jogador válido: ${player.isValid}`);
+                console.warn(`[CLANS DEBUG] Jogador está online: ${!player.isRemoved}`);
+                console.warn(`[CLANS DEBUG] Tags do jogador: [${player.getTags().join(', ')}]`);
+                console.warn(`[CLANS DEBUG] Chamando showClanSelectionMenu para ${player.name}`);
                 showClanSelectionMenu(player);
+            } else {
+                console.warn(`[CLANS DEBUG] ${player.name} inválido no timeout`);
             }
-        }, 100);
+        }, 20); // 1 segundo
     } else {
         // Já tem um clã real: Apenas Boas-Vindas
         const clan = CLANS[currentClanKey];
-        const rank = getRank(player, clan);
+        const rank = getRank(player);
         player.nameTag = `${clan.color}[ ${rank} ]\n§f${player.name}`;
         player.sendMessage(`§7[SISTEMA] Voce e um §f${rank} da ${clan.name}§7. Bem-vindo de volta!`);
         world.sendMessage(`${clan.color}${player.name} §7(da ${clan.name}) entrou no servidor.`);
     }
-});
-
+}
 
 // Menu de seleção de clã
 async function showClanSelectionMenu(player) {
-    if (!player) return;
+    console.warn(`[CLANS DEBUG] showClanSelectionMenu iniciado para ${player.name}`);
+    if (!player) {
+        console.warn(`[CLANS DEBUG] Player é null - retornando`);
+        return;
+    }
+    
+    console.warn(`[CLANS DEBUG] Player válido: ${player.isValid}`);
+    console.warn(`[CLANS DEBUG] Player removido: ${player.isRemoved}`);
+    
+    // Verificar se já tem menu ativo para este jogador
+    if (activeMenus.has(player.id)) {
+        console.warn(`[CLANS DEBUG] ${player.name} já tem menu ativo - ignorando`);
+        return;
+    }
+    
+    // Adicionar ao conjunto de menus ativos
+    activeMenus.add(player.id);
+    console.warn(`[CLANS DEBUG] ${player.name} adicionado ao activeMenus`);
+    
+    // PROTEÇÃO SIMPLES - APENAS IMORTALIDADE E LENTIDÃO
+    try {
+        player.addEffect('resistance', 999999, { amplifier: 255, showParticles: false }); // Imortalidade
+        player.addEffect('fire_resistance', 999999, { amplifier: 255, showParticles: false }); // Imune a fogo
+        player.addEffect('water_breathing', 999999, { amplifier: 255, showParticles: false }); // Imune a afogamento
+        player.addEffect('slowness', 999999, { amplifier: 2, showParticles: false }); // Lentidão leve (pode andar devagar)
+        
+        console.warn(`[CLANS DEBUG] Proteção com lentidão aplicada para ${player.name}`);
+    } catch(e) {}
     
     // LIMPEZA PREVENTIVA DE TAGS DE NPC (Caso o player tenha pego por erro de scripts anteriores)
     try {
@@ -562,45 +663,115 @@ async function showClanSelectionMenu(player) {
         for (const t of npcTags) if (player.hasTag(t)) player.removeTag(t);
     } catch(e) {}
 
+    console.warn(`[CLANS DEBUG] Criando formulário ActionFormData`);
     const form = new ActionFormData()
-        .title('§6§lESCOLHA ÚNICA DE CLÃ!')
-        .body('§7Bem-vindo ao servidor!\n\n§e§lATENÇÃO:§r\n§7Esta escolha é §cPERMANENTE§7!\n§7Apenas Admins podem mudar depois.\n\n§7Escolha seu clã:');
+        .title('§c§lOBRIGATÓRIO! ESCOLHA SEU CLÃ!')
+        .body('§c§lVOCÊ ESTÁ BLOQUEADO!\n\n§7§lEste menu §cNÃO FECHA§7 até escolher!\n\n§e§lATENÇÃO:§r\n§7Esta escolha é §cPERMANENTE§7!');
     
+    console.warn(`[CLANS DEBUG] Adicionando botões ao formulário`);
     form.button(`${CLANS.red.color}[${CLANS.red.name}]\n§7Poder do Fogo`);
     form.button(`${CLANS.blue.color}[${CLANS.blue.name}]\n§7Poder da Água`);
     form.button(`${CLANS.green.color}[${CLANS.green.name}]\n§7Poder da Terra`);
     form.button(`${CLANS.yellow.color}[${CLANS.yellow.name}]\n§7Poder do Vento`);
     
-    const response = await form.show(player);
-    if (!player) return;
+    console.warn(`[CLANS DEBUG] Mostrando formulário para ${player.name}`);
+    console.warn(`[CLANS DEBUG] Player.isValid antes do form.show: ${player.isValid}`);
     
-    // CASO CANCELE: Vira Nômade permanentemente (escolha única foi perdida)
-    if (response.canceled) {
-        player.addTag(CLANS.default.tag);
-        player.nameTag = `${CLANS.default.color}[ ${CLANS.default.name} ]\n§f${player.name}`;
-        player.sendMessage(`§e[SISTEMA] Você §ccancelou§e a escolha de clan!`);
-        player.sendMessage(`§7Agora você é §f${CLANS.default.name}§7 permanentemente.`);
-        player.sendMessage(`§7Apenas um §cAdmin§7 pode mudar seu clan.`);
-        return;
+    try {
+        const response = await form.show(player);
+        console.warn(`[CLANS DEBUG] Resposta recebida de ${player.name}:`, JSON.stringify(response));
+        
+        // Remover do conjunto de menus ativos (sempre remover no final)
+        activeMenus.delete(player.id);
+        
+        if (!player) {
+            console.warn(`[CLANS DEBUG] Player inválido após formulário`);
+            return;
+        }
+        
+        // CASO CANCELE OU FECHE: Mostrar menu novamente imediatamente
+        if (response.canceled) {
+            console.warn(`[CLANS DEBUG] ${player.name} CANCELOU/FECHOU - mostrando novamente imediatamente`);
+            player.sendMessage(`§c§lOBRIGATÓRIO! §7Você §cPRECISA§7 escolher um clan!`);
+            
+            // Mostrar novamente imediatamente (sem esperar)
+            system.runTimeout(() => {
+                if (player.isValid && player.hasTag('clan_selection_locked')) {
+                    showClanSelectionMenu(player);
+                }
+            }, 5); // 0.25 segundos - quase instantâneo
+            
+            return;
+        }
+        
+        console.warn(`[CLANS DEBUG] ${player.name} escolheu opção: ${response.selection}`);
+        const clanKeys = ['red', 'blue', 'green', 'yellow'];
+        const selectedClan = CLANS[clanKeys[response.selection]];
+        
+        // TELA DE CONFIRMAÇÃO
+        console.warn(`[CLANS DEBUG] Criando formulário de confirmação`);
+        const confirmForm = new ActionFormData()
+            .title('§e§lCONFIRMAÇÃO DE CLÃ!')
+            .body(`§7Você escolheu o clan ${selectedClan.color}[${selectedClan.name}]§7.\n\n§c§lATENÇÃO:§r\n§7Esta escolha é §cPERMANENTE§7!\n§7Apenas Admins podem mudar depois.\n\n§aTem certeza que deseja confirmar?`);
+        
+        confirmForm.button('§a§lSIM, CONFIRMAR ESCOLHA');
+        confirmForm.button('§c§lNÃO, VOLTAR');
+        
+        console.warn(`[CLANS DEBUG] Mostrando confirmação para ${player.name}`);
+        const confirmResponse = await confirmForm.show(player);
+        console.warn(`[CLANS DEBUG] Resposta confirmação de ${player.name}:`, JSON.stringify(confirmResponse));
+        
+        if (!player) {
+            console.warn(`[CLANS DEBUG] Player inválido na confirmação`);
+            return;
+        }
+        
+        // SE CANCELOU OU ESCOLHEU "NÃO": Voltar ao menu principal
+        if (confirmResponse.canceled || confirmResponse.selection === 1) {
+            console.warn(`[CLANS DEBUG] ${player.name} não confirmou - voltando ao menu em 3s`);
+            player.sendMessage(`§cEscolha cancelada! Voltando ao menu em 3 segundos...`);
+            
+            system.runTimeout(() => {
+                if (player.isValid && player.hasTag('clan_selection_locked')) {
+                    showClanSelectionMenu(player);
+                }
+            }, 60); // 3 segundos
+            
+            return;
+        }
+        
+        // SE CONFIRMOU: Aplicar o clan
+        console.warn(`[CLANS DEBUG] ${player.name} CONFIRMOU escolha do clan ${selectedClan.name}`);
+        
+        // REMOVER APENAS EFEITOS DE PROTEÇÃO BÁSICA
+        try {
+            player.removeEffect('resistance');
+            player.removeEffect('fire_resistance');
+            player.removeEffect('water_breathing');
+            player.removeEffect('slowness');
+            console.warn(`[CLANS DEBUG] Proteção básica removida de ${player.name}`);
+        } catch(e) {}
+        
+        // Remover tags de bloqueio
+        player.removeTag('clan_selection_locked');
+        player.removeTag('movement_locked');
+        
+        // Adicionar clan
+        player.addTag(selectedClan.tag);
+        const rank = getRank(player);
+        player.nameTag = `${selectedClan.color}[ ${rank} ]\n§f${player.name}`;
+        
+        player.sendMessage(`§a§lBLOQUEIO REMOVIDO!`);
+        player.sendMessage(`${selectedClan.color}Você entrou no clan ${selectedClan.name}!`);
+        player.sendMessage(`§7Esta escolha é §cPERMANENTE§7. Apenas Admins podem mudar.`);
+        player.sendMessage(`§aAgora você pode jogar normalmente!`);
+        world.sendMessage(`${selectedClan.color}${player.name} §7entrou no ${selectedClan.color}[${selectedClan.name}]§7!`);
+        
+    } catch (error) {
+        console.warn(`[CLANS DEBUG] Erro ao mostrar formulário:`, error);
+        activeMenus.delete(player.id);
     }
-    
-    const clanKeys = ['red', 'blue', 'green', 'yellow'];
-    const selectedClan = CLANS[clanKeys[response.selection]];
-    
-    // Remover tag de Nômade se existir
-    if (player.hasTag(CLANS.default.tag)) player.removeTag(CLANS.default.tag);
-    
-    player.addTag(selectedClan.tag);
-    const rank = getRank(player);
-    player.nameTag = `${selectedClan.color}[ ${rank} ]\n§f${player.name}`;
-    
-    player.sendMessage(`${selectedClan.color}§lESCOLHA CONFIRMADA!`);
-    player.sendMessage(`${selectedClan.color}Você entrou permanentemente no clan ${selectedClan.name}!`);
-    player.sendMessage(`§7Esta escolha é §cPERMANENTE§7. Apenas Admins podem mudar.`);
-    world.sendMessage(`${selectedClan.color}${player.name} §7entrou no ${selectedClan.color}[${selectedClan.name}]§7!`);
 }
-
-// Atualizar nomes dos jogadores a cada 5 segundos (para garantir que não são resetados)
 let tickCount = 0;
 system.runInterval(() => {
     tickCount++;
@@ -2034,23 +2205,8 @@ function maintenanceLoop() {
 // Loop de Segurança e Manutenção (1 minuto)
 system.runInterval(maintenanceLoop, 1200);
 
-// Loop de Construção da Arena (Mais rápido - a cada 10 segundos até terminar)
-system.runInterval(() => {
-    try {
-        const isArenaGenerated = world.getDynamicProperty('arena_120_generated');
-        if (!isArenaGenerated) {
-            let currentStep = world.getDynamicProperty('arena_120_step') ?? 0;
-            if (currentStep <= 11) {
-
-                console.warn(`[ARENA-LOOP] Executando passo ${currentStep}`);
-                executeArenaMaintenanceStep(currentStep);
-                world.setDynamicProperty('arena_120_step', currentStep + 1);
-            }
-        }
-    } catch (e) {
-        console.warn(`[ARENA-LOOP-ERRO] ${e}`);
-    }
-}, 200);
+// Loop de Construção da Arena REMOVIDO - agora só via comando Admin
+// system.runInterval(() => { ... }, 200);
 
 // --- AUXILIAR: VERIFICAR SE ESTÁ NA ARENA (60x60 CORE) ---
 function isInsideArena(pos) {
@@ -2313,14 +2469,11 @@ system.runTimeout(() => {
     // Verificação de Arena (Agora integrada ao loop)
     const isArenaGenerated = world.getDynamicProperty('arena_120_generated');
     if (!isArenaGenerated) {
-        console.warn('[CLANS] Detectada necessidade de Arena 120. O loop de manutencao cuidara disso.');
+        console.warn('[CLANS] Arena 120 não gerada - use !gerararena120 para criar.');
     }
 
-    // Agendar a primeira manutenção para 10 segundos depois (200 ticks)
-    // Assim o totem e o pedestal aparecem logo no início sem esperar 1 minuto
-    system.runTimeout(() => {
-        maintenanceLoop();
-    }, 200);
+    // Timeout inicial da arena REMOVIDO - agora só via comando Admin
+    // system.runTimeout(() => { maintenanceLoop(); }, 200);
 }, 100);
 
 //------------------------------------------
@@ -2355,12 +2508,22 @@ function isInClanBase(player, clanKey) {
     }
 }
 
+// Sistema de teleporte REMOVIDO - agora apenas lentidão e proteção
+// Jogador fica lento e imortal até escolher clan
+
 // Bloquear Quebra de Blocos nas Bases (Proteção de Clã)
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
     const player = event.player;
     
     // Se for admin, libera tudo
     if (checkAdmin(player)) return;
+    
+    // Se está bloqueado esperando clan, bloquear todas as ações
+    if (player.hasTag('clan_selection_locked')) {
+        event.cancel = true;
+        player.sendMessage('§cVocê está bloqueado! Escolha um clan para jogar.');
+        return;
+    }
 
     // Verificar se está na base de ALGUM clã
     for (const key in CLANS) {
