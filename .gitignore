@@ -8,7 +8,8 @@ bedrock_server.exe
 *.zip
 
 # World data (Can be large)
-# worlds/
+worlds/db
+
 
 # Database files (LevelDB - VERY IMPORTANT)
 worlds/*/db/
