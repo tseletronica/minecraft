@@ -817,50 +817,30 @@ system.runInterval(() => {
         
         // EFETOS PASSIVOS POR CLÃ
         for (const player of allPlayers) {
-            // 🔴 CLÃ RED: Resistência ao Fogo + Nether Might
+            // 🔴 CLÃ RED: Resistência a Fogo/Lava + Bate com Fogo
             if (player.hasTag(CLANS.red.tag)) {
                 player.addEffect('fire_resistance', 600, { showParticles: false });
-                
-                // Nether Might: Força I no Nether
-                if (player.dimension.id === 'minecraft:nether') {
-                    player.addEffect('strength', 600, { amplifier: 0, showParticles: false });
-                }
             }
 
-            // 🔵 CLÃ BLUE: Respiração Aquática + Mist Walker (Sneak)
+            // 🔵 CLÃ BLUE: Não se Afoga + Visão Dentro d'Água
             if (player.hasTag(CLANS.blue.tag)) {
-                // Respiração + Visão Submersa
                 player.addEffect('water_breathing', 600, { showParticles: false });
                 
                 if (player.isInWater) {
                     player.addEffect('night_vision', 600, { showParticles: false });
-                    player.addEffect('speed', 600, { amplifier: 0, showParticles: false });
-                    player.addEffect('haste', 600, { amplifier: 0, showParticles: false });
-                }
-
-                // Mist Walker: Invisibilidade ao agachar (Sneak)
-                if (player.isSneaking) {
-                    player.addEffect('invisibility', 40, { showParticles: false }); // Apenas 2 segundos
-                } else {
-                    // Remover se não estiver agachado (para ser instantâneo)
-                    player.removeEffect('invisibility');
                 }
             }
 
 
-            // 🟢 CLÃ GREEN: Visão Noturna + Pele de Ferro
+            // 🟢 CLÃ GREEN: Visão Noturna + Imunidade a Mobs Hostis
             if (player.hasTag(CLANS.green.tag)) {
                 player.addEffect('night_vision', 600, { showParticles: false });
-                
-                // Iron Skin: Resistência I Permanente
-                player.addEffect('resistance', 600, { amplifier: 0, showParticles: false });
             }
 
-            // 🟡 CLÃ YELLOW: Imunidade Queda + Architect Speed
+            // 🟡 CLÃ YELLOW: Imune a Queda + Constrói Rápido
             if (player.hasTag(CLANS.yellow.tag)) {
-                // Architect Speed: Velocidade II + Pressa II
-                player.addEffect('speed', 600, { amplifier: 1, showParticles: false });
-                player.addEffect('haste', 600, { amplifier: 1, showParticles: false });
+                // Constrói Rápido: Haste I para mineração/colocação
+                player.addEffect('haste', 600, { amplifier: 0, showParticles: false });
             }
 
             // ⚪ CLÃ STAFF: Imortalidade + Pacifismo (Fraqueza)
