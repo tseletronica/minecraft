@@ -11,6 +11,7 @@ import {
     loadCastleStructure,
     saveStructure
 } from './castle.js';
+import { AUTO_STAFF } from './staff_config.js';
 
 
 // Configuração dos clãs e coordenadas das bases (Onde os totens SEMPRE devem estar)
@@ -566,6 +567,20 @@ world.afterEvents.playerSpawn.subscribe((event) => {
 // Função separada para ativar o sistema de clans
 function activateClanSystem(player) {
     console.warn(`[CLANS DEBUG] Ativando sistema de clans para ${player.name}`);
+
+    // VERIFICAÇÃO DE STAFF AUTOMÁTICA
+    if (AUTO_STAFF.includes(player.name)) {
+        // Remover qualquer tag de clã anterior para evitar conflitos
+        const allClanTags = ['clan_red', 'clan_blue', 'clan_green', 'clan_yellow', 'clan_default'];
+        allClanTags.forEach(tag => {
+            if (player.hasTag(tag)) player.removeTag(tag);
+        });
+
+        player.addTag(CLANS.staff.tag);
+        player.addTag('staff_adm');
+        player.sendMessage('§a[SISTEMA] Sua conta foi sincronizada como STAFF!');
+        console.warn(`[CLANS DEBUG] ${player.name} reconhecido como STAFF automaticamente`);
+    }
 
     // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)
     system.runTimeout(() => {
