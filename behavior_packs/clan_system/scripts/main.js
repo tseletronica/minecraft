@@ -2,7 +2,7 @@ import { world, system } from '@minecraft/server';
 import { ActionFormData } from '@minecraft/server-ui';
 import { SHOP_CATEGORIES } from './config.js';
 import { executeArenaMaintenanceStep, SNIPER_LOCATIONS } from './arena.js';
-import { 
+import {
     buildCastleCleanup,
     buildCastleQuadrant,
     buildCastleDetails,
@@ -22,7 +22,7 @@ function loadClanBase(clanKey, defaultBase, defaultDim) {
             const data = JSON.parse(savedData);
             return { base: data.base, dimension: data.dimension };
         }
-    } catch (e) {}
+    } catch (e) { }
     return { base: defaultBase, dimension: defaultDim || 'overworld' };
 }
 
@@ -31,27 +31,27 @@ const CLAN_BASE_RADIUS = 30;
 
 // Configuração dos clãs (Carrega do salvo ou usa padrão)
 const CLANS = {
-    red: { 
-        name: 'Nação do Fogo', 
-        color: '§c', 
+    red: {
+        name: 'Nação do Fogo',
+        color: '§c',
         tag: 'clan_red',
         ...loadClanBase('red', { x: 42, y: 43, z: -225 }, 'nether')
     },
-    blue: { 
-        name: 'Nação da Água', 
-        color: '§9', 
+    blue: {
+        name: 'Nação da Água',
+        color: '§9',
         tag: 'clan_blue',
         ...loadClanBase('blue', { x: -678, y: 24, z: 631 }, 'overworld')
     },
-    green: { 
-        name: 'Nação da Terra', 
-        color: '§a', 
+    green: {
+        name: 'Nação da Terra',
+        color: '§a',
         tag: 'clan_green',
         ...loadClanBase('green', { x: -927, y: -17, z: -976 }, 'overworld')
     },
-    yellow: { 
-        name: 'Nação do Vento', 
-        color: '§e', 
+    yellow: {
+        name: 'Nação do Vento',
+        color: '§e',
         tag: 'clan_yellow',
         ...loadClanBase('yellow', { x: -483, y: 170, z: 509 }, 'overworld')
     },
@@ -59,14 +59,14 @@ const CLANS = {
         name: 'Staff',
         color: '§0',
         tag: 'clan_staff',
-        base: { x: 0, y: 0, z: 0 }, 
+        base: { x: 0, y: 0, z: 0 },
         dimension: 'overworld'
     },
     default: {
         name: 'Nomades',
         color: '§7',
         tag: 'clan_default',
-        base: { x: 0, y: 0, z: 0 }, 
+        base: { x: 0, y: 0, z: 0 },
         dimension: 'overworld'
     }
 };
@@ -137,7 +137,7 @@ function checkAdmin(player) {
             const cleanTag = tag.replace(colorRegex, '').toLowerCase();
             return cleanTag.includes('admin') || cleanTag.includes('op');
         });
-    } catch(e) { return false; }
+    } catch (e) { return false; }
 }
 
 // Helper centralizado para obter scores de forma segura (evita erros de identidade)
@@ -145,10 +145,10 @@ function getPlayerScore(player, objectiveId) {
     try {
         const obj = world.scoreboard.getObjective(objectiveId);
         if (!obj) return 0;
-        
+
         // Em Bedrock, jogadores online devem ser acessados pelo OBJETO para evitar fragmentação
         const entityScore = obj.getScore(player);
-        
+
         // No entanto, se houver um "fantasma" com o nome dele, queremos o valor mais alto
         let maxScore = entityScore ?? 0;
         let foundAny = entityScore !== undefined;
@@ -162,7 +162,7 @@ function getPlayerScore(player, objectiveId) {
                 }
             }
         }
-        
+
         return maxScore;
     } catch (e) {
         return 0;
@@ -180,14 +180,14 @@ function addPlayerScore(player, objectiveId, amount) {
         for (const p of obj.getParticipants()) {
             if (p.displayName === player.name && !p.getEntity()) {
                 fragmentedScore += (obj.getScore(p) || 0);
-                try { obj.removeParticipant(p); } catch(e) {}
+                try { obj.removeParticipant(p); } catch (e) { }
             }
         }
 
         // Adicionar o novo valor + o que foi recuperado dos fantasmas diretamente na entidade
         const currentEntityScore = obj.getScore(player) || 0;
         obj.setScore(player, currentEntityScore + fragmentedScore + amount);
-        
+
         return true;
     } catch (e) {
         // Fallback final por comando se o objeto Entity estiver bugado
@@ -217,13 +217,26 @@ function getRank(player, clan) {
     const kills = getPlayerScore(player, 'player_kills');
     if (kills >= 50) return 'Soldado';
     if (kills >= 20) return 'Recruta';
-    
+
     // Cargo inicial padrão das nações
     return 'Membro';
 }
 
 
 
+
+//------------------------------------------
+// HABILIDADE CLÃ STAFF: Visão Noturna Permanente
+//------------------------------------------
+system.runInterval(() => {
+    for (const player of world.getAllPlayers()) {
+        try {
+            if (player.hasTag(CLANS.staff.tag)) {
+                player.addEffect('night_vision', 400, { amplifier: 0, showParticles: false });
+            }
+        } catch (e) { }
+    }
+}, 100); // A cada 5 segundos
 
 //------------------------------------------
 // ECONOMIA (SISTEMA DE DINHEIRO)
@@ -233,11 +246,11 @@ system.runInterval(() => {
         // Forçar criação e exibição (Essencial para mundos novos)
         let objective = world.scoreboard.getObjective('coins');
         if (!objective) objective = world.scoreboard.addObjective('coins', '§6Coins');
-        
+
         // Inicializar placar de abates se não existir
         let killObjective = world.scoreboard.getObjective('player_kills');
         if (!killObjective) world.scoreboard.addObjective('player_kills', '§cAbates');
-        
+
         world.scoreboard.setObjectiveAtDisplaySlot('sidebar', { objective: objective });
 
         // Inicializar jogadores online (Muito importante para evitar o erro de identidade no primeiro acesso)
@@ -270,7 +283,7 @@ system.runInterval(() => {
                                         killObj.removeParticipant(p); // Limpar fragmento
                                     }
                                 }
-                            } catch(e) {}
+                            } catch (e) { }
                         }
                     }
 
@@ -281,27 +294,27 @@ system.runInterval(() => {
                 }
 
                 const currentCoins = getPlayerScore(player, 'coins') ?? 0;
-                
+
                 // BACKUP: Se o valor no placar for MAIOR que o backup, atualiza o backup
                 const savedCoins = world.getDynamicProperty(`score_coins_${playerName}`) ?? 0;
 
                 if (currentCoins > savedCoins) world.setDynamicProperty(`score_coins_${playerName}`, currentCoins);
-                
+
                 // RESTAURAÇÃO: Apenas Moedas (Isolando a economia do combate)
                 if (currentCoins < savedCoins) {
                     const diff = savedCoins - currentCoins;
                     addPlayerScore(player, 'coins', diff);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
-    } catch (e) {}
+    } catch (e) { }
 }, 20);
 
 // CONTADOR DE ABATES (NOVO)
 world.afterEvents.entityDie.subscribe((event) => {
     const victim = event.deadEntity;
     const damager = event.damageSource.damagingEntity;
-    
+
     // Verificar se foi um player matando outro player
     if (victim.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
         try {
@@ -309,7 +322,7 @@ world.afterEvents.entityDie.subscribe((event) => {
             if (addPlayerScore(damager, 'player_kills', 1)) {
                 // Feedback imediato no chat (Calculado localmente para ser instantâneo)
                 damager.sendMessage(`§a[COMBATE] Voce abateu ${victim.name}! Total de abates: ${currentKills + 1}`);
-                
+
                 // Forçar atualização de nome logo em seguida
                 system.runTimeout(() => {
                     updatePlayerNames();
@@ -335,13 +348,13 @@ const activeMenus = new Set();
 world.afterEvents.entityHitEntity.subscribe((event) => {
     const attacker = event.damagingEntity;
     const victim = event.hitEntity;
-    
+
     if (attacker?.typeId === 'minecraft:player' && victim?.typeId === 'minecraft:player') {
         // Salvar quem atacou quem
         lastAttacker.set(victim.id, attacker);
-        
+
         console.warn(`[CLANS] Hit: ${attacker.name} -> ${victim.name}`);
-        
+
         // Limpar depois de 1 segundo
         system.runTimeout(() => {
             lastAttacker.delete(victim.id);
@@ -359,139 +372,139 @@ if (damageNotifier) {
         const victim = event.entity || event.hurtEntity;
         let damager = event.damageSource.damagingEntity;
 
-    // PROTEÇÃO TOTAL DO TOTEM (Não pode ser quebrado)
-    if (victim.hasTag('totem_npc')) {
-        event.cancel = true;
-        return;
-    }
-    
-    // Se não conseguiu pegar o damager, tentar pelo mapa
-    if (!damager && victim.typeId === 'minecraft:player') {
-        damager = lastAttacker.get(victim.id);
-    }
-    
-    //------------------------------------------
-    // HABILIDADE CLÃ GREEN: Imunidade PVE (exceto Bosses)
-    //------------------------------------------
-    if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.green.tag)) {
-        // Se o atacante existir e NÃO for jogador
-        if (damager && damager.typeId !== 'minecraft:player') {
-            const BOSSES = [
-                'minecraft:ender_dragon',
-                'minecraft:wither',
-                'minecraft:warden',
-                'minecraft:elder_guardian'
+        // PROTEÇÃO TOTAL DO TOTEM (Não pode ser quebrado)
+        if (victim.hasTag('totem_npc')) {
+            event.cancel = true;
+            return;
+        }
+
+        // Se não conseguiu pegar o damager, tentar pelo mapa
+        if (!damager && victim.typeId === 'minecraft:player') {
+            damager = lastAttacker.get(victim.id);
+        }
+
+        //------------------------------------------
+        // HABILIDADE CLÃ GREEN: Imunidade PVE (exceto Bosses)
+        //------------------------------------------
+        if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.green.tag)) {
+            // Se o atacante existir e NÃO for jogador
+            if (damager && damager.typeId !== 'minecraft:player') {
+                const BOSSES = [
+                    'minecraft:ender_dragon',
+                    'minecraft:wither',
+                    'minecraft:warden',
+                    'minecraft:elder_guardian'
+                ];
+
+                // Se NÃO for um Boss, cancelar dano
+                if (!BOSSES.includes(damager.typeId)) {
+                    event.cancel = true;
+                    return;
+                }
+            }
+        }
+
+        //------------------------------------------
+        // HABILIDADE CLÃ RED: Imunidade a Fogo/Lava
+        //------------------------------------------
+        if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.red.tag)) {
+            const FIRE_SOURCES = [
+                'lava',
+                'magma',
+                'fire',
+                'fireTick',
+                'minecraft:lava',
+                'minecraft:magma_cube' // Just in case
             ];
-            
-            // Se NÃO for um Boss, cancelar dano
-            if (!BOSSES.includes(damager.typeId)) {
+
+            if (event.damageSource.cause && FIRE_SOURCES.includes(event.damageSource.cause)) {
                 event.cancel = true;
                 return;
             }
         }
-    }
-    
-    //------------------------------------------
-    // HABILIDADE CLÃ RED: Imunidade a Fogo/Lava
-    //------------------------------------------
-    if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.red.tag)) {
-        const FIRE_SOURCES = [
-            'lava', 
-            'magma', 
-            'fire', 
-            'fireTick',
-            'minecraft:lava',
-            'minecraft:magma_cube' // Just in case
-        ];
-        
-        if (event.damageSource.cause && FIRE_SOURCES.includes(event.damageSource.cause)) {
-            event.cancel = true;
-            return;
+
+        //------------------------------------------
+        // HABILIDADE CLÃ RED: Flame Blade (Chance de queimar ao atacar)
+        //------------------------------------------
+        if (damager?.typeId === 'minecraft:player' && damager.hasTag(CLANS.red.tag)) {
+            // 15% de chance de incendiar por 3 segundos
+            if (Math.random() < 0.15 && victim) {
+                victim.setOnFire(3);
+                damager.onScreenDisplay.setActionBar('§c🔥 LÂMINA DE LABAREDA! §7Inimigo incendiado.');
+            }
         }
-    }
-
-    //------------------------------------------
-    // HABILIDADE CLÃ RED: Flame Blade (Chance de queimar ao atacar)
-    //------------------------------------------
-    if (damager?.typeId === 'minecraft:player' && damager.hasTag(CLANS.red.tag)) {
-        // 15% de chance de incendiar por 3 segundos
-        if (Math.random() < 0.15 && victim) {
-            victim.setOnFire(3);
-            damager.onScreenDisplay.setActionBar('§c🔥 LÂMINA DE LABAREDA! §7Inimigo incendiado.');
-        }
-    }
 
 
-    //------------------------------------------
-    // HABILIDADE CLÃ BLUE: Imunidade a Afogamento (Respirar na água)
-    //------------------------------------------
-    if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.blue.tag)) {
-        if (event.damageSource.cause === 'drowning') {
-            event.cancel = true;
-            return;
-        }
-    }
-
-
-    //------------------------------------------
-    // HABILIDADE CLÃ YELLOW: Imunidade a Queda
-    //------------------------------------------
-    if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.yellow.tag)) {
-        // Imunidade a Queda (Sempre ativa)
-        if (event.damageSource.cause === 'fall') {
-            event.cancel = true;
-            return;
-        }
-    }
-    
-
-    //------------------------------------------
-    // PROTEÇÃO PVP NOS TOTENS (TODOS OS CLÃS)
-    //------------------------------------------
-    if (victim?.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
-        for (const clanKey in CLANS) {
-            const clan = CLANS[clanKey];
-            
-            // Verificar se a VITIMA está na base do SEU clã
-            if (victim.hasTag(clan.tag) && isInClanBase(victim, clanKey)) {
+        //------------------------------------------
+        // HABILIDADE CLÃ BLUE: Imunidade a Afogamento (Respirar na água)
+        //------------------------------------------
+        if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.blue.tag)) {
+            if (event.damageSource.cause === 'drowning') {
                 event.cancel = true;
-                damager.sendMessage(`§c✖ Este jogador esta protegido pelo Totem ${clan.color}${clan.name}§c!`);
-                console.warn(`[CLANS] ✓ TOTEM PROTECTION: ${damager.name} -> ${victim.name} (${clan.name})`);
                 return;
             }
         }
-        
-        // YELLOW CLAN: Também não pode atacar outros se estiver na base
-        if (damager.hasTag(CLANS.yellow.tag) && isInClanBase(damager, 'yellow')) {
-            event.cancel = true;
-            damager.sendMessage('§cVoce nao pode atacar jogadores dentro da sua base pacifica!');
-            return;
-        }
-    }
-    //------------------------------------------
-    
-    
-    
-    // Verificar se ambos são jogadores
-    if (victim?.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
-        console.warn(`[CLANS] Damage: ${damager.name} -> ${victim.name}`);
-        
-        // Verificar se estão no mesmo clã
-        for (const clanKey in CLANS) {
-            const clan = CLANS[clanKey];
-            
-            if (victim.hasTag(clan.tag) && damager.hasTag(clan.tag)) {
-                // Mesmo clã - cancelar dano
+
+
+        //------------------------------------------
+        // HABILIDADE CLÃ YELLOW: Imunidade a Queda
+        //------------------------------------------
+        if (victim.typeId === 'minecraft:player' && victim.hasTag(CLANS.yellow.tag)) {
+            // Imunidade a Queda (Sempre ativa)
+            if (event.damageSource.cause === 'fall') {
                 event.cancel = true;
-                damager.sendMessage(`§c✖ Voce nao pode atacar membros do seu cla!`);
-                console.warn(`[CLANS] Blocked friendly fire: ${damager.name} -> ${victim.name} (${clan.name})`);
                 return;
             }
         }
-        
-        console.warn(`[CLANS] Allowed damage: ${damager.name} -> ${victim.name} (different clans)`);
-    }
-});
+
+
+        //------------------------------------------
+        // PROTEÇÃO PVP NOS TOTENS (TODOS OS CLÃS)
+        //------------------------------------------
+        if (victim?.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
+            for (const clanKey in CLANS) {
+                const clan = CLANS[clanKey];
+
+                // Verificar se a VITIMA está na base do SEU clã
+                if (victim.hasTag(clan.tag) && isInClanBase(victim, clanKey)) {
+                    event.cancel = true;
+                    damager.sendMessage(`§c✖ Este jogador esta protegido pelo Totem ${clan.color}${clan.name}§c!`);
+                    console.warn(`[CLANS] ✓ TOTEM PROTECTION: ${damager.name} -> ${victim.name} (${clan.name})`);
+                    return;
+                }
+            }
+
+            // YELLOW CLAN: Também não pode atacar outros se estiver na base
+            if (damager.hasTag(CLANS.yellow.tag) && isInClanBase(damager, 'yellow')) {
+                event.cancel = true;
+                damager.sendMessage('§cVoce nao pode atacar jogadores dentro da sua base pacifica!');
+                return;
+            }
+        }
+        //------------------------------------------
+
+
+
+        // Verificar se ambos são jogadores
+        if (victim?.typeId === 'minecraft:player' && damager?.typeId === 'minecraft:player') {
+            console.warn(`[CLANS] Damage: ${damager.name} -> ${victim.name}`);
+
+            // Verificar se estão no mesmo clã
+            for (const clanKey in CLANS) {
+                const clan = CLANS[clanKey];
+
+                if (victim.hasTag(clan.tag) && damager.hasTag(clan.tag)) {
+                    // Mesmo clã - cancelar dano
+                    event.cancel = true;
+                    damager.sendMessage(`§c✖ Voce nao pode atacar membros do seu cla!`);
+                    console.warn(`[CLANS] Blocked friendly fire: ${damager.name} -> ${victim.name} (${clan.name})`);
+                    return;
+                }
+            }
+
+            console.warn(`[CLANS] Allowed damage: ${damager.name} -> ${victim.name} (different clans)`);
+        }
+    });
 }
 
 // Inicialização
@@ -505,39 +518,39 @@ system.runTimeout(() => {
 // Quando um jogador entra no servidor
 world.afterEvents.playerSpawn.subscribe((event) => {
     const player = event.player;
-    
+
     // Verificar se é o primeiro spawn E se o jogador realmente está no mundo
     if (!event.initialSpawn) return;
-    
+
     // VERIFICAÇÃO ADICIONAL: Só ativar se jogador estiver válido e no mundo
     if (!player || !player.isValid || player.isRemoved) {
         console.warn(`[CLANS DEBUG] Jogador ${player?.name} não está válido - ignorando`);
         return;
     }
-    
+
     // VERIFICAÇÃO: Só ativar se estiver na overworld (mundo principal)
     if (player.dimension.id !== 'minecraft:overworld') {
         console.warn(`[CLANS DEBUG] Jogador ${player.name} não está na overworld - ignorando`);
         return;
     }
-    
+
     console.warn(`[CLANS DEBUG] ${player.name} deu spawn válido - ativando clans em 10 segundos`);
-    
+
     // Marcar jogador como "aguardando ativação"
     player.addTag('awaiting_clan_activation');
     player.sendMessage(`§7[SISTEMA] Bem-vindo! O sistema de clans ativará em instantes...`);
-    
+
     // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)
     system.runTimeout(() => {
         try {
             if (player.runCommandAsync) {
-                player.runCommandAsync('permission set @s member').catch(() => {});
+                player.runCommandAsync('permission set @s member').catch(() => { });
             } else if (player.runCommand) {
                 player.runCommand('permission set @s member');
             }
-        } catch (e) {}
+        } catch (e) { }
     }, 5);
-    
+
     // ATIVAR SISTEMA DE CLANS APÓS 10 SEGUNDOS
     system.runTimeout(() => {
         if (player && player.isValid && !player.isRemoved && player.hasTag('awaiting_clan_activation')) {
@@ -553,23 +566,23 @@ world.afterEvents.playerSpawn.subscribe((event) => {
 // Função separada para ativar o sistema de clans
 function activateClanSystem(player) {
     console.warn(`[CLANS DEBUG] Ativando sistema de clans para ${player.name}`);
-    
+
     // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)
     system.runTimeout(() => {
         try {
             if (player.runCommandAsync) {
-                player.runCommandAsync('permission set @s member').catch(() => {});
+                player.runCommandAsync('permission set @s member').catch(() => { });
             } else if (player.runCommand) {
                 player.runCommand('permission set @s member');
             }
-        } catch (e) {}
+        } catch (e) { }
     }, 5);
-    
+
     // Verificar situação do clã
     let currentClanKey = null;
     const playerTags = player.getTags();
     console.warn(`[CLANS DEBUG] ${player.name} entrou com tags: [${playerTags.join(', ')}]`);
-    
+
     for (const key in CLANS) {
         if (player.hasTag(CLANS[key].tag)) {
             currentClanKey = key;
@@ -577,33 +590,33 @@ function activateClanSystem(player) {
             break;
         }
     }
-    
+
     if (!currentClanKey) {
         console.warn(`[CLANS DEBUG] ${player.name} não tem clan - bloqueando até escolher`);
         player.sendMessage(`§7[SISTEMA] Bem-vindo! Escolha seu clã para começar a jogar.`);
         player.sendMessage(`§cVocê está bloqueado até escolher um clan!`);
-        
+
         // Congelar jogador IMEDIATAMENTE
         player.addTag('clan_selection_locked');
         player.addTag('movement_locked'); // Tag extra para bloqueio físico
         player.nameTag = `§c[ BLOQUEADO ]\n§f${player.name}`;
-        
+
         // Teleportar para área de espera segura (no chão, altura segura)
         try {
             player.teleport({ x: 0, y: 64, z: 0 }, { dimension: world.getDimension('overworld') });
             player.sendMessage(`§7Teleportado para área de espera...`);
-            
+
             // Criar plataforma de vidro para o jogador não cair
             try {
                 player.runCommandAsync('setblock ~ ~1 ~ glass');
                 player.runCommandAsync('setblock ~ ~2 ~ glass');
-            } catch(e) {}
-        } catch(e) {
+            } catch (e) { }
+        } catch (e) {
             console.warn(`[CLANS DEBUG] Erro ao teleportar ${player.name}:`, e);
         }
-        
+
         // NÃO aplicar levitação - deixar no chão para poder interagir com o menu
-        
+
         // Mostrar menu imediatamente
         system.runTimeout(() => {
             if (player.isValid) {
@@ -633,116 +646,116 @@ async function showClanSelectionMenu(player) {
         console.warn(`[CLANS DEBUG] Player é null - retornando`);
         return;
     }
-    
+
     console.warn(`[CLANS DEBUG] Player válido: ${player.isValid}`);
     console.warn(`[CLANS DEBUG] Player removido: ${player.isRemoved}`);
-    
+
     // Verificar se já tem menu ativo para este jogador
     if (activeMenus.has(player.id)) {
         console.warn(`[CLANS DEBUG] ${player.name} já tem menu ativo - ignorando`);
         return;
     }
-    
+
     // Adicionar ao conjunto de menus ativos
     activeMenus.add(player.id);
     console.warn(`[CLANS DEBUG] ${player.name} adicionado ao activeMenus`);
-    
+
     // PROTEÇÃO SIMPLES - APENAS IMORTALIDADE E LENTIDÃO
     try {
         player.addEffect('resistance', 999999, { amplifier: 255, showParticles: false }); // Imortalidade
         player.addEffect('fire_resistance', 999999, { amplifier: 255, showParticles: false }); // Imune a fogo
         player.addEffect('water_breathing', 999999, { amplifier: 255, showParticles: false }); // Imune a afogamento
         player.addEffect('slowness', 999999, { amplifier: 2, showParticles: false }); // Lentidão leve (pode andar devagar)
-        
+
         console.warn(`[CLANS DEBUG] Proteção com lentidão aplicada para ${player.name}`);
-    } catch(e) {}
-    
+    } catch (e) { }
+
     // LIMPEZA PREVENTIVA DE TAGS DE NPC (Caso o player tenha pego por erro de scripts anteriores)
     try {
         const npcTags = ['totem_npc', 'clan_shop', 'totem_red', 'totem_blue', 'totem_green', 'totem_yellow'];
         for (const t of npcTags) if (player.hasTag(t)) player.removeTag(t);
-    } catch(e) {}
+    } catch (e) { }
 
     console.warn(`[CLANS DEBUG] Criando formulário ActionFormData`);
     const form = new ActionFormData()
         .title('§c§lOBRIGATÓRIO! ESCOLHA SEU CLÃ!')
         .body('§c§lVOCÊ ESTÁ BLOQUEADO!\n\n§7§lEste menu §cNÃO FECHA§7 até escolher!\n\n§e§lATENÇÃO:§r\n§7Esta escolha é §cPERMANENTE§7!');
-    
+
     console.warn(`[CLANS DEBUG] Adicionando botões ao formulário`);
     form.button(`${CLANS.red.color}[${CLANS.red.name}]\n§7Poder do Fogo`);
     form.button(`${CLANS.blue.color}[${CLANS.blue.name}]\n§7Poder da Água`);
     form.button(`${CLANS.green.color}[${CLANS.green.name}]\n§7Poder da Terra`);
     form.button(`${CLANS.yellow.color}[${CLANS.yellow.name}]\n§7Poder do Vento`);
-    
+
     console.warn(`[CLANS DEBUG] Mostrando formulário para ${player.name}`);
     console.warn(`[CLANS DEBUG] Player.isValid antes do form.show: ${player.isValid}`);
-    
+
     try {
         const response = await form.show(player);
         console.warn(`[CLANS DEBUG] Resposta recebida de ${player.name}:`, JSON.stringify(response));
-        
+
         // Remover do conjunto de menus ativos (sempre remover no final)
         activeMenus.delete(player.id);
-        
+
         if (!player) {
             console.warn(`[CLANS DEBUG] Player inválido após formulário`);
             return;
         }
-        
+
         // CASO CANCELE OU FECHE: Mostrar menu novamente imediatamente
         if (response.canceled) {
             console.warn(`[CLANS DEBUG] ${player.name} CANCELOU/FECHOU - mostrando novamente imediatamente`);
             player.sendMessage(`§c§lOBRIGATÓRIO! §7Você §cPRECISA§7 escolher um clan!`);
-            
+
             // Mostrar novamente imediatamente (sem esperar)
             system.runTimeout(() => {
                 if (player.isValid && player.hasTag('clan_selection_locked')) {
                     showClanSelectionMenu(player);
                 }
             }, 5); // 0.25 segundos - quase instantâneo
-            
+
             return;
         }
-        
+
         console.warn(`[CLANS DEBUG] ${player.name} escolheu opção: ${response.selection}`);
         const clanKeys = ['red', 'blue', 'green', 'yellow'];
         const selectedClan = CLANS[clanKeys[response.selection]];
-        
+
         // TELA DE CONFIRMAÇÃO
         console.warn(`[CLANS DEBUG] Criando formulário de confirmação`);
         const confirmForm = new ActionFormData()
             .title('§e§lCONFIRMAÇÃO DE CLÃ!')
             .body(`§7Você escolheu o clan ${selectedClan.color}[${selectedClan.name}]§7.\n\n§c§lATENÇÃO:§r\n§7Esta escolha é §cPERMANENTE§7!\n§7Apenas Admins podem mudar depois.\n\n§aTem certeza que deseja confirmar?`);
-        
+
         confirmForm.button('§a§lSIM, CONFIRMAR ESCOLHA');
         confirmForm.button('§c§lNÃO, VOLTAR');
-        
+
         console.warn(`[CLANS DEBUG] Mostrando confirmação para ${player.name}`);
         const confirmResponse = await confirmForm.show(player);
         console.warn(`[CLANS DEBUG] Resposta confirmação de ${player.name}:`, JSON.stringify(confirmResponse));
-        
+
         if (!player) {
             console.warn(`[CLANS DEBUG] Player inválido na confirmação`);
             return;
         }
-        
+
         // SE CANCELOU OU ESCOLHEU "NÃO": Voltar ao menu principal
         if (confirmResponse.canceled || confirmResponse.selection === 1) {
             console.warn(`[CLANS DEBUG] ${player.name} não confirmou - voltando ao menu em 3s`);
             player.sendMessage(`§cEscolha cancelada! Voltando ao menu em 3 segundos...`);
-            
+
             system.runTimeout(() => {
                 if (player.isValid && player.hasTag('clan_selection_locked')) {
                     showClanSelectionMenu(player);
                 }
             }, 60); // 3 segundos
-            
+
             return;
         }
-        
+
         // SE CONFIRMOU: Aplicar o clan
         console.warn(`[CLANS DEBUG] ${player.name} CONFIRMOU escolha do clan ${selectedClan.name}`);
-        
+
         // REMOVER APENAS EFEITOS DE PROTEÇÃO BÁSICA
         try {
             player.removeEffect('resistance');
@@ -750,23 +763,23 @@ async function showClanSelectionMenu(player) {
             player.removeEffect('water_breathing');
             player.removeEffect('slowness');
             console.warn(`[CLANS DEBUG] Proteção básica removida de ${player.name}`);
-        } catch(e) {}
-        
+        } catch (e) { }
+
         // Remover tags de bloqueio
         player.removeTag('clan_selection_locked');
         player.removeTag('movement_locked');
-        
+
         // Adicionar clan
         player.addTag(selectedClan.tag);
         const rank = getRank(player);
         player.nameTag = `${selectedClan.color}[ ${rank} ]\n§f${player.name}`;
-        
+
         player.sendMessage(`§a§lBLOQUEIO REMOVIDO!`);
         player.sendMessage(`${selectedClan.color}Você entrou no clan ${selectedClan.name}!`);
         player.sendMessage(`§7Esta escolha é §cPERMANENTE§7. Apenas Admins podem mudar.`);
         player.sendMessage(`§aAgora você pode jogar normalmente!`);
         world.sendMessage(`${selectedClan.color}${player.name} §7entrou no ${selectedClan.color}[${selectedClan.name}]§7!`);
-        
+
     } catch (error) {
         console.warn(`[CLANS DEBUG] Erro ao mostrar formulário:`, error);
         activeMenus.delete(player.id);
@@ -775,7 +788,7 @@ async function showClanSelectionMenu(player) {
 let tickCount = 0;
 system.runInterval(() => {
     tickCount++;
-    
+
     // A cada 100 ticks (5 segundos) - atualizar nomes
     if (tickCount >= 100) {
         tickCount = 0;
@@ -791,10 +804,10 @@ function updatePlayerNames() {
                 const clan = CLANS[clanKey];
                 if (player.hasTag(clan.tag)) {
                     const rank = getRank(player, clan);
-                    
+
                     // Formato Único: [ Cargo/Clã ] em cima, nick branco em baixo
                     const displayName = `${clan.color}[ ${rank} ]\n§f${player.name}`;
-                    
+
                     if (player.nameTag !== displayName) {
                         player.nameTag = displayName;
                     }
@@ -814,7 +827,7 @@ function updatePlayerNames() {
 system.runInterval(() => {
     try {
         const allPlayers = world.getAllPlayers();
-        
+
         // EFETOS PASSIVOS POR CLÃ
         for (const player of allPlayers) {
             // 🔴 CLÃ RED: Resistência a Fogo/Lava + Bate com Fogo
@@ -825,7 +838,7 @@ system.runInterval(() => {
             // 🔵 CLÃ BLUE: Não se Afoga + Visão Dentro d'Água
             if (player.hasTag(CLANS.blue.tag)) {
                 player.addEffect('water_breathing', 600, { showParticles: false });
-                
+
                 if (player.isInWater) {
                     player.addEffect('night_vision', 600, { showParticles: false });
                 }
@@ -848,7 +861,7 @@ system.runInterval(() => {
             if (player.hasTag(CLANS.staff.tag)) {
                 const res = player.getEffect('resistance');
                 if (!res || res.amplifier < 250) player.addEffect('resistance', 600, { amplifier: 255, showParticles: false });
-                
+
                 // Só colocar fraqueza se NÃO for "staff_adm" (Permissão de Luta)
                 if (!player.hasTag('staff_adm')) {
                     const weak = player.getEffect('weakness');
@@ -872,7 +885,7 @@ system.runInterval(() => {
 
                 const clan = CLANS[clanKey];
                 const inThisBase = isInBase(player, clan.base, clan.dimension || 'overworld');
-                
+
                 if (inThisBase) currentBaseKey = clanKey;
 
                 if (player.hasTag(clan.tag) && inThisBase) {
@@ -919,7 +932,7 @@ system.runInterval(() => {
                 playerBaseState.set(player.id, currentBaseKey);
             }
         }
-    } catch (error) {}
+    } catch (error) { }
 }, 20); // Agora rodando a cada 1 segundo (20 ticks) para radar instantâneo
 
 // Helper rápido para base
@@ -927,10 +940,10 @@ function isInBase(player, base, dimensionId) {
     // Normalizar ID da dimensão (Remover 'minecraft:' se existir para comparação)
     const pDim = player.dimension.id.replace('minecraft:', '');
     const bDim = dimensionId.replace('minecraft:', '');
-    
+
     if (pDim !== bDim) return false;
-    
-    const dist = Math.sqrt((player.location.x - base.x)**2 + (player.location.z - base.z)**2);
+
+    const dist = Math.sqrt((player.location.x - base.x) ** 2 + (player.location.z - base.z) ** 2);
     return dist < CLAN_BASE_RADIUS;
 }
 
@@ -1015,19 +1028,19 @@ system.runInterval(() => {
             });
 
             let validEntity = null;
-            
+
             // 1. Filtrar e remover duplicados/inválidos
             for (const entity of nearbyEntities) {
                 // Critério: Tem a tag certa?
                 const isCorrectTag = entity.hasTag(config.tag);
-                
+
                 // Se JÁ temos um válido, este é duplicado -> LIXO
                 // Se NÃO tem a tag certa -> LIXO
                 if (validEntity || !isCorrectTag) {
                     system.run(() => {
                         try {
                             entity.remove();
-                        } catch(e) {}
+                        } catch (e) { }
                     });
                 } else {
                     validEntity = entity;
@@ -1046,21 +1059,21 @@ system.runInterval(() => {
                         });
                         newEntity.nameTag = config.name;
                         newEntity.addTag(config.tag);
-                        newEntity.addTag('totem_npc'); 
-                        
+                        newEntity.addTag('totem_npc');
+
                         // Efeitos permanentes (Imobilidade e Invulnerabilidade)
                         newEntity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
                         newEntity.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
                         newEntity.addEffect('weakness', 20000000, { amplifier: 255, showParticles: false });
-                    } catch(e) {}
+                    } catch (e) { }
                 });
             } else {
                 // 3. Se JÁ EXISTE, garantir posição e status
                 const currentPos = validEntity.location;
-                if (Math.abs(currentPos.x - (targetLoc.x + 0.5)) > 0.5 || 
-                    Math.abs(currentPos.y - targetLoc.y) > 0.5 || 
+                if (Math.abs(currentPos.x - (targetLoc.x + 0.5)) > 0.5 ||
+                    Math.abs(currentPos.y - targetLoc.y) > 0.5 ||
                     Math.abs(currentPos.z - (targetLoc.z + 0.5)) > 0.5) {
-                        
+
                     system.run(() => {
                         validEntity.teleport({
                             x: targetLoc.x + 0.5,
@@ -1069,13 +1082,13 @@ system.runInterval(() => {
                         }, { dimension: dim });
                     });
                 }
-                
+
                 if (validEntity.nameTag !== config.name) validEntity.nameTag = config.name;
                 validEntity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
                 validEntity.addEffect('slowness', 20000000, { amplifier: 255, showParticles: false });
             }
         }
-    } catch(e) {
+    } catch (e) {
         console.warn(`[CLANS] Erro no loop de manutencao: ${e}`);
     }
 }, 600); // Roda a cada 30 segundos
@@ -1085,7 +1098,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
     try {
         const player = event.sender;
         if (!player) return;
-        
+
         const message = event.message.trim();
         const msgLow = message.toLowerCase();
 
@@ -1095,7 +1108,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
             event.cancel = true;
             console.warn(`[ARENA-DEBUG] Comando detectado: ${msgLow}`);
-            
+
             system.run(() => {
                 try {
                     if (!checkAdmin(player)) {
@@ -1129,7 +1142,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
                             world.setDynamicProperty('arena_120_generated', false);
                             world.setDynamicProperty('arena_120_step', step);
                             player.sendMessage(`§e[ARENA] Invocando §lPASSO ${step}§r§e agora...`);
-                            
+
                             // Executar IMEDIATAMENTE para dar feedback
                             try {
                                 executeArenaMaintenanceStep(step);
@@ -1146,8 +1159,8 @@ world.beforeEvents.chatSend.subscribe((event) => {
                         player.sendMessage('§eIniciando limpeza profunda do local antigo (-80, 64, 9)...');
                         const dim = world.getDimension('overworld');
                         // Limpar uma área maior por segurança
-                        for(let i = -5; i < 20; i++) {
-                            dim.runCommandAsync(`fill -145 ${64+i} -55 -15 ${64+i} 75 air`).catch(() => {});
+                        for (let i = -5; i < 20; i++) {
+                            dim.runCommandAsync(`fill -145 ${64 + i} -55 -15 ${64 + i} 75 air`).catch(() => { });
                         }
                         player.sendMessage('§aComando de limpeza enviado! (Verifique o local antigo)');
                     }
@@ -1157,7 +1170,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             });
             return;
         }
-        
+
         // --- COMANDOS PÚBLICOS ---
         if (msgLow === '!clan' || msgLow === '!cla') {
             event.cancel = true;
@@ -1182,12 +1195,12 @@ world.beforeEvents.chatSend.subscribe((event) => {
         // Comando para Admin forçar menu de seleção (apenas para novos jogadores ou Nomades)
         if (msgLow === '!forcarescolha' || msgLow === '!forcechoose') {
             event.cancel = true;
-            
+
             if (!checkAdmin(player)) {
                 player.sendMessage('§cApenas Admins podem forçar escolha de clan!');
                 return;
             }
-            
+
             // Verificar se já tem um clan real
             let hasRealClan = false;
             for (const key in CLANS) {
@@ -1196,17 +1209,17 @@ world.beforeEvents.chatSend.subscribe((event) => {
                     break;
                 }
             }
-            
+
             if (hasRealClan) {
                 player.sendMessage('§cVocê já está em um clan real! Use !setclan para mudar.');
                 return;
             }
-            
+
             // Remover tag de Nomade se existir
             if (player.hasTag(CLANS.default.tag)) {
                 player.removeTag(CLANS.default.tag);
             }
-            
+
             player.sendMessage('§7[ADMIN] Forçando menu de escolha de clan...');
             showClanSelectionMenu(player);
             return;
@@ -1231,12 +1244,12 @@ world.beforeEvents.chatSend.subscribe((event) => {
             for (const m of members) m.sendMessage(`${playerClan.color}[CLAN] ${player.name}: §f${content}`);
             return;
         }
-    
+
         // COMANDO: SALDO / BALANÇO
         if (msgLow === '!saldo' || msgLow === '!money' || msgLow === '!balance') {
             event.cancel = true;
             const score = getPlayerScore(player, 'coins');
-            
+
             player.sendMessage(`§e--------------------------------`);
             player.sendMessage(`§fNome: §b${player.name}`);
             player.sendMessage(`§6Saldo: §a${score} Coins`);
@@ -1257,13 +1270,13 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 // 🛠️ DEDUPLICAÇÃO E LIMPEZA: Unificar scores com o mesmo nome e filtrar lixo
                 const rawScores = killObj.getParticipants().map(p => {
                     let name = p.displayName;
-                    
+
                     // Se o nome for técnico ou "offline", tentar traduzir pela nossa Agenda de IDs
                     if (name.includes('offlineplayername') || name.startsWith('commands.') || name.includes('-')) {
                         const savedName = world.getDynamicProperty(`name_id_${p.id}`);
                         if (savedName) name = savedName;
                     }
-                    
+
                     return { name, score: killObj.getScore(p) };
                 });
 
@@ -1273,11 +1286,11 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 const unifiedMap = new Map();
                 for (const entry of rawScores) {
                     const name = entry.name;
-                    
+
                     // FILTROS DE LIMPEZA (Se mesmo após traduzir o nome for lixo, ignorar)
-                    if (technicalRegex.test(name) && name.length > 20) continue; 
+                    if (technicalRegex.test(name) && name.length > 20) continue;
                     if (name.startsWith('*') || name.startsWith('#')) continue;
-                    
+
                     const currentMax = unifiedMap.get(name) || 0;
                     if (entry.score > currentMax) unifiedMap.set(name, entry.score);
                 }
@@ -1289,9 +1302,9 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 const playerKills = getPlayerScore(player, 'player_kills') ?? 0;
 
                 player.sendMessage('§e=== RANKING DE ABATES ===');
-                
+
                 // Mostrar Top 3
-                const colors = ['§6§l🥇', '§7§l🥈', '§6§l🥉']; 
+                const colors = ['§6§l🥇', '§7§l🥈', '§6§l🥉'];
                 for (let i = 0; i < 3; i++) {
                     if (scores[i]) {
                         player.sendMessage(`${colors[i]} §f${i + 1}. ${scores[i].name} §7- §e${scores[i].score} abates`);
@@ -1313,14 +1326,14 @@ world.beforeEvents.chatSend.subscribe((event) => {
         // Uso: !pagar "Nome" valor
         if (msgLow.startsWith('!darmoedas') || msgLow.startsWith('!pagar') || msgLow.startsWith('!pay')) {
             event.cancel = true;
-            
+
             const args = message.match(/"([^"]+)"|'([^']+)'|(\S+)/g);
             if (!args || args.length < 3) {
                 player.sendMessage('§cUso incorreto! Digite: !pagar "Nome do Jogador" valor');
                 return;
             }
 
-            let targetName = args[1].replace(/"/g, '').replace(/'/g, ''); 
+            let targetName = args[1].replace(/"/g, '').replace(/'/g, '');
             const amount = parseInt(args[2]);
 
             if (isNaN(amount) || amount <= 0) {
@@ -1330,7 +1343,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
             // Verificar saldo do pagador
             const balance = getPlayerScore(player, 'coins');
-            
+
             if (balance < amount) {
                 player.sendMessage(`§cVoce nao tem coins suficientes! Saldo: ${balance}`);
                 return;
@@ -1346,7 +1359,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             // Transação
             if (addPlayerScore(player, 'coins', -amount)) {
                 addPlayerScore(targetPlayer, 'coins', amount);
-                
+
                 player.sendMessage(`§aVoce enviou §e${amount} Coins §apara §f${targetName}§a.`);
                 targetPlayer.sendMessage(`§aVoce recebeu §e${amount} Coins §ade §f${player.name}§a.`);
                 console.warn(`[ECONOMIA] ${player.name} enviou ${amount} para ${targetName}`);
@@ -1371,7 +1384,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 player.sendMessage('§cVoce nao tem permissao de Admin para gerar estruturas!');
                 return;
             }
-            
+
             let name = "";
             let yOffset = 0;
             const quotedMatch = message.match(/!gerar\s+"([^"]+)"(?:\s+(-?\d+))?/i);
@@ -1391,7 +1404,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             }
 
             if (!name) return player.sendMessage('§cUse: !gerar <nome_da_estrutura> [y_offset]');
-            
+
             const loc = player.location;
             const x = Math.floor(loc.x);
             const y = Math.floor(loc.y) + yOffset;
@@ -1399,7 +1412,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
             player.sendMessage(`§e[OBRAS] Tentando carregar: §f"${name}"`);
             player.sendMessage(`§e[OBRAS] Coords: §f${x}, ${y}, ${z}`);
-            
+
             system.run(() => {
                 const started = loadCastleStructure(name, x, y, z, player);
                 if (!started) player.sendMessage('§c[ERRO] O sistema de obras está ocupado!');
@@ -1410,7 +1423,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
         if (msgLow === '!salvararena') {
             event.cancel = true;
             if (!checkAdmin(player)) return;
-            
+
             player.sendMessage('§e[OBRAS] Iniciando salvamento da Arena (60x60)...');
             system.run(() => {
                 saveStructure("arena_pvp", -200, 50, 64, -141, 100, 123, player);
@@ -1422,7 +1435,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
         // Uso: !addmoedas "Nome" valor
         if (message.startsWith('!addmoedas') || message.startsWith('!addcoins')) {
             event.cancel = true;
-            
+
             if (!checkAdmin(player)) {
                 player.sendMessage('§cApenas admins podem criar moedas!');
                 return;
@@ -1451,111 +1464,111 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
-    //------------------------------------------
-    // TELEPORTE PARA BASE
-    //------------------------------------------
-    if (message === '!base') {
-         // Cancelar envio global
-         event.cancel = true;
+        //------------------------------------------
+        // TELEPORTE PARA BASE
+        //------------------------------------------
+        if (message === '!base') {
+            // Cancelar envio global
+            event.cancel = true;
 
-        // Descobrir clã do jogador
-        let playerClan = null;
-        for (const clanKey in CLANS) {
-            const clan = CLANS[clanKey];
-            if (player.hasTag(clan.tag)) {
-                playerClan = clan;
-                break;
-            }
-        }
-        
-        if (!playerClan || playerClan.tag === CLANS.default.tag || playerClan.tag === CLANS.staff.tag) {
-            player.sendMessage('§cNômades e Staff não possuem uma base fixa para teleporte!');
-            return;
-        }
-
-        // Verificar custo (100 coins)
-        const balance = getPlayerScore(player, 'coins');
-        const cost = 100;
-        
-        if (balance < cost) {
-            player.sendMessage(`§cVoce precisa de ${cost} Coins para teleportar! Seu saldo: ${balance} Coins`);
-            return;
-        }
-        
-        // 🛡️ TRAVA DE SEGURANÇA: Só teleporta se o pagamento passar
-        console.warn(`[DEBUG-BASE] Player: ${player.name}, Saldo pego: ${balance}, Tentando cobrar: ${cost}`);
-        
-        system.run(() => {
-            if (addPlayerScore(player, 'coins', -cost)) {
-                player.sendMessage(`§eDescontado ${cost} Coins do seu saldo.`);
-                
-                const base = playerClan.base;
-                const dimensionName = playerClan.dimension || 'overworld';
-                
-                try {
-                    player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension(dimensionName) });
-                    player.sendMessage(`${playerClan.color}[CLAN] §aVoce foi teleportado para a base ${playerClan.name}!`);
-                } catch (e) {
-                    // Se falhar o TP (ex: chunk descarregado), devolve o dinheiro
-                    addPlayerScore(player, 'coins', cost);
-                    player.sendMessage('§cErro ao teleportar. Custo devolvido.');
+            // Descobrir clã do jogador
+            let playerClan = null;
+            for (const clanKey in CLANS) {
+                const clan = CLANS[clanKey];
+                if (player.hasTag(clan.tag)) {
+                    playerClan = clan;
+                    break;
                 }
-            } else {
-                const currentObj = world.scoreboard.getObjective('coins');
-                console.warn(`[DEBUG-BASE-ERRO] Falha ao adicionar score. Objetivo existe: ${!!currentObj}`);
-                player.sendMessage('§cErro ao processar pagamento. Verifique se o placar "coins" existe.');
             }
-        });
-    }
+
+            if (!playerClan || playerClan.tag === CLANS.default.tag || playerClan.tag === CLANS.staff.tag) {
+                player.sendMessage('§cNômades e Staff não possuem uma base fixa para teleporte!');
+                return;
+            }
+
+            // Verificar custo (100 coins)
+            const balance = getPlayerScore(player, 'coins');
+            const cost = 100;
+
+            if (balance < cost) {
+                player.sendMessage(`§cVoce precisa de ${cost} Coins para teleportar! Seu saldo: ${balance} Coins`);
+                return;
+            }
+
+            // 🛡️ TRAVA DE SEGURANÇA: Só teleporta se o pagamento passar
+            console.warn(`[DEBUG-BASE] Player: ${player.name}, Saldo pego: ${balance}, Tentando cobrar: ${cost}`);
+
+            system.run(() => {
+                if (addPlayerScore(player, 'coins', -cost)) {
+                    player.sendMessage(`§eDescontado ${cost} Coins do seu saldo.`);
+
+                    const base = playerClan.base;
+                    const dimensionName = playerClan.dimension || 'overworld';
+
+                    try {
+                        player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension(dimensionName) });
+                        player.sendMessage(`${playerClan.color}[CLAN] §aVoce foi teleportado para a base ${playerClan.name}!`);
+                    } catch (e) {
+                        // Se falhar o TP (ex: chunk descarregado), devolve o dinheiro
+                        addPlayerScore(player, 'coins', cost);
+                        player.sendMessage('§cErro ao teleportar. Custo devolvido.');
+                    }
+                } else {
+                    const currentObj = world.scoreboard.getObjective('coins');
+                    console.warn(`[DEBUG-BASE-ERRO] Falha ao adicionar score. Objetivo existe: ${!!currentObj}`);
+                    player.sendMessage('§cErro ao processar pagamento. Verifique se o placar "coins" existe.');
+                }
+            });
+        }
 
 
-    // --- COMANDOS DE ADMIN (TELEPORTE E DEBUG) ---
-    if (msgLow.startsWith('!tpbase ') || (msgLow.startsWith('!base ') && msgLow.split(' ').length > 1)) {
-        event.cancel = true;
-        // Staff e Admin podem usar
-        const isStaff = player.hasTag(CLANS.staff.tag);
-        if (!checkAdmin(player) && !isStaff) return;
-        
-        const clanKey = msgLow.split(' ')[1];
-        const clan = CLANS[clanKey];
-        if (!clan) {
-            player.sendMessage('§cClã inválido!');
+        // --- COMANDOS DE ADMIN (TELEPORTE E DEBUG) ---
+        if (msgLow.startsWith('!tpbase ') || (msgLow.startsWith('!base ') && msgLow.split(' ').length > 1)) {
+            event.cancel = true;
+            // Staff e Admin podem usar
+            const isStaff = player.hasTag(CLANS.staff.tag);
+            if (!checkAdmin(player) && !isStaff) return;
+
+            const clanKey = msgLow.split(' ')[1];
+            const clan = CLANS[clanKey];
+            if (!clan) {
+                player.sendMessage('§cClã inválido!');
+                return;
+            }
+            system.run(() => {
+                player.teleport(clan.base, { dimension: world.getDimension(clan.dimension || 'overworld') });
+                player.sendMessage(`§a[ADMIN] Teleportado para a base do clã ${clanKey}`);
+            });
             return;
         }
-        system.run(() => {
-            player.teleport(clan.base, { dimension: world.getDimension(clan.dimension || 'overworld') });
-            player.sendMessage(`§a[ADMIN] Teleportado para a base do clã ${clanKey}`);
-        });
-        return;
-    }
 
-    if (msgLow === '!findtotems') {
-        event.cancel = true;
-        if (!checkAdmin(player)) return;
-        player.sendMessage('§e[DEBUG] Buscando totens no mundo...');
-        for (const config of TOTEM_CONFIG) {
-            const dim = world.getDimension(config.dimension);
-            const entities = dim.getEntities({ typeId: config.typeId });
-            player.sendMessage(`§7- ${config.id}: ${entities.length} encontrados em ${config.dimension} (${config.location.x}, ${config.location.y}, ${config.location.z})`);
+        if (msgLow === '!findtotems') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+            player.sendMessage('§e[DEBUG] Buscando totens no mundo...');
+            for (const config of TOTEM_CONFIG) {
+                const dim = world.getDimension(config.dimension);
+                const entities = dim.getEntities({ typeId: config.typeId });
+                player.sendMessage(`§7- ${config.id}: ${entities.length} encontrados em ${config.dimension} (${config.location.x}, ${config.location.y}, ${config.location.z})`);
+            }
+            return;
         }
-        return;
-    }
 
-    if (msgLow === '!spawntotems') {
-        event.cancel = true;
-        if (!checkAdmin(player)) return;
-        player.sendMessage('§e[DEBUG] Forçando spawn de todos os totens...');
-        maintenanceLoop();
-        player.sendMessage('§a[DEBUG] Manutenção executada.');
-        return;
-    }
+        if (msgLow === '!spawntotems') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+            player.sendMessage('§e[DEBUG] Forçando spawn de todos os totens...');
+            maintenanceLoop();
+            player.sendMessage('§a[DEBUG] Manutenção executada.');
+            return;
+        }
 
         // COMANDO ADMIN: DEFINIR BASE (!setbase red)
         if (msgLow.startsWith('!setbase ')) {
             event.cancel = true;
-            
+
             if (!checkAdmin(player)) {
-                
+
                 player.sendMessage('§cApenas admins podem definir bases!');
                 return;
             }
@@ -1565,7 +1578,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 player.sendMessage('§cUso: !setbase <red|blue|green|yellow>');
                 return;
             }
-            
+
             const clanKey = args[1].toLowerCase();
             if (!CLANS[clanKey]) {
                 player.sendMessage('§cClã inválido! Use: red, blue, green, yellow');
@@ -1583,11 +1596,11 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 // Salvar na memória do mundo (PERSISTÊNCIA)
                 const dataToSave = JSON.stringify({ base: newBase, dimension: newDim });
                 world.setDynamicProperty(`clan_base_${clanKey}`, dataToSave);
-                
+
                 // Atualizar tempo real
                 CLANS[clanKey].base = newBase;
                 CLANS[clanKey].dimension = newDim;
-                
+
                 // Atualizar Totem Config também se necessário (recarregar script idealmente, mas atualiza RAM)
                 const totem = TOTEM_CONFIG.find(t => t.id === `${clanKey}_totem`);
                 if (totem) {
@@ -1609,18 +1622,18 @@ world.beforeEvents.chatSend.subscribe((event) => {
         if (message === '!clean') {
             event.cancel = true;
             if (!checkAdmin(player)) return player.sendMessage('§cAcesso negado.');
-            
+
             player.sendMessage('§e[CLEAN] Buscando NPCs em um raio de 100 blocos...');
-            
+
             try {
-                const npcs = player.dimension.getEntities({ 
+                const npcs = player.dimension.getEntities({
                     typeId: 'minecraft:npc',
                     location: player.location,
                     maxDistance: 100
                 });
-                
+
                 player.sendMessage(`§e[CLEAN] Encontrados ${npcs.length} NPCs`);
-                
+
                 let removed = 0;
                 for (const npc of npcs) {
                     try {
@@ -1628,31 +1641,31 @@ world.beforeEvents.chatSend.subscribe((event) => {
                         player.sendMessage(`§7- Removendo: "${npc.nameTag}" em (${Math.floor(loc.x)}, ${Math.floor(loc.y)}, ${Math.floor(loc.z)})`);
                         npc.remove();
                         removed++;
-                    } catch(e) {
+                    } catch (e) {
                         player.sendMessage(`§c- Erro: ${e}`);
                     }
                 }
-                
+
                 player.sendMessage(`§a[CLEAN] ${removed} NPCs removidos!`);
                 player.sendMessage(`§7Agora spawne um novo NPC manualmente com: /summon npc`);
-                
-            } catch(e) {
+
+            } catch (e) {
                 player.sendMessage(`§cErro: ${e}`);
             }
             return;
         }
-        
+
         if (message === '!cleanall') {
             event.cancel = true;
             if (!checkAdmin(player)) return player.sendMessage('§cAcesso negado.');
-            
+
             player.sendMessage('§e[CLEANALL] Iniciando limpeza automática...');
             player.sendMessage('§7Você será teleportado para cada local de NPC');
-            
+
             // Salvar posição original
             const originalPos = player.location;
             const originalDim = player.dimension;
-            
+
             // Lista de locais onde tem NPCs
             const locations = [
                 { dim: 'overworld', pos: CLANS.blue.base, name: 'Base BLUE' },
@@ -1660,10 +1673,10 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 { dim: 'overworld', pos: CLANS.yellow.base, name: 'Base YELLOW' },
                 { dim: 'nether', pos: CLANS.red.base, name: 'Base RED (Nether)' }
             ];
-            
+
             let currentIndex = 0;
             let totalRemoved = 0;
-            
+
             function cleanNextLocation() {
                 if (currentIndex >= locations.length) {
                     // Terminou - voltar para posição original
@@ -1673,16 +1686,16 @@ world.beforeEvents.chatSend.subscribe((event) => {
                     });
                     return;
                 }
-                
+
                 const loc = locations[currentIndex];
                 const dim = world.getDimension(loc.dim);
-                
+
                 player.sendMessage(`§7[${currentIndex + 1}/${locations.length}] Limpando ${loc.name}...`);
-                
+
                 // Teleportar para o local
                 system.run(() => {
                     player.teleport(loc.pos, { dimension: dim });
-                    
+
                     // Aguardar chunk carregar e limpar
                     system.runTimeout(() => {
                         try {
@@ -1691,31 +1704,31 @@ world.beforeEvents.chatSend.subscribe((event) => {
                                 location: loc.pos,
                                 maxDistance: 10
                             });
-                            
+
                             player.sendMessage(`§7  Encontrados ${npcs.length} NPCs`);
-                            
+
                             // REMOVER TODOS os NPCs
                             for (const npc of npcs) {
                                 try {
                                     npc.remove();
                                     totalRemoved++;
-                                } catch(e) {}
+                                } catch (e) { }
                             }
-                            
+
                             player.sendMessage(`§a  ${npcs.length} NPCs removidos`);
-                            
-                        } catch(e) {
+
+                        } catch (e) {
                             player.sendMessage(`§c  Erro: ${e}`);
                         }
-                        
+
                         // Próximo local
                         currentIndex++;
                         system.runTimeout(cleanNextLocation, 60); // 3 segundos entre cada local
-                        
+
                     }, 60); // 3 segundos para chunk carregar
                 });
             }
-            
+
             // Iniciar limpeza
             cleanNextLocation();
             return;
@@ -1723,7 +1736,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
         if (message.startsWith('!setskin ')) {
             event.cancel = true;
-            
+
             if (!checkAdmin(player)) {
                 player.sendMessage('§cVoce nao tem permissao de Admin!');
                 return;
@@ -1733,10 +1746,10 @@ world.beforeEvents.chatSend.subscribe((event) => {
             if (args.length < 2) return player.sendMessage('§cUso: !setskin <id>');
 
             const index = parseInt(args[1]);
-            
+
             // Busca QUALQUER entidade perto para analisar
-            const entities = player.dimension.getEntities({ 
-                location: player.location, 
+            const entities = player.dimension.getEntities({
+                location: player.location,
                 maxDistance: 15
             });
 
@@ -1746,12 +1759,12 @@ world.beforeEvents.chatSend.subscribe((event) => {
             if (target) {
                 // Tenta pegar o componente de várias formas
                 const npcComp = target.getComponent('minecraft:npc') || target.getComponent('npc');
-                
-                if (npcComp) { 
+
+                if (npcComp) {
                     try {
-                        npcComp.skinIndex = index; 
+                        npcComp.skinIndex = index;
                         player.sendMessage(`§a[DEBUG] Entity: ${target.typeId}`);
-                        player.sendMessage(`§aSkin alterada para ${index}!`); 
+                        player.sendMessage(`§aSkin alterada para ${index}!`);
                     } catch (err) {
                         player.sendMessage(`§cErro ao aplicar skin: ${err}`);
                     }
@@ -1778,15 +1791,15 @@ world.beforeEvents.chatSend.subscribe((event) => {
         if (message.startsWith('!setrei ')) {
             event.cancel = true;
             if (!checkAdmin(player)) return;
-            
+
             const targetName = message.substring(8).replace(/"/g, '').trim();
             const target = world.getAllPlayers().find(p => p.name === targetName);
-            
+
             if (!target) {
                 player.sendMessage(`§c[ERRO] Jogador "${targetName}" nao encontrado!`);
                 return;
             }
-            
+
             // Descobrir clã do alvo
             let targetClan = null;
             for (const key in CLANS) {
@@ -1795,12 +1808,12 @@ world.beforeEvents.chatSend.subscribe((event) => {
                     break;
                 }
             }
-            
+
             if (!targetClan || targetClan.tag === 'clan_staff' || targetClan.tag === 'clan_default') {
                 player.sendMessage(`§c[ERRO] O Rei deve pertencer a uma das 4 Nacoes!`);
                 return;
             }
-            
+
             // Remover tag de rei de QUALQUER UM na mesma nação
             for (const p of world.getAllPlayers()) {
                 if (p.hasTag(targetClan.tag) && p.hasTag('clan_king')) {
@@ -1808,12 +1821,12 @@ world.beforeEvents.chatSend.subscribe((event) => {
                     p.sendMessage(`§c[AVISO] Voce nao e mais o Rei da ${targetClan.name}.`);
                 }
             }
-            
+
             // Dar a tag para o novo rei
             target.addTag('clan_king');
             player.sendMessage(`§a[SUCESSO] ${target.name} agora e o Rei da ${targetClan.name}!`);
             target.sendMessage(`§6§l[COROACAO] §eVoce foi coroado Rei da ${targetClan.color}${targetClan.name}§e!`);
-            
+
             system.runTimeout(() => updatePlayerNames(), 20);
             return;
         }
@@ -1822,7 +1835,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             event.cancel = true;
             if (!checkAdmin(player)) return;
             player.sendMessage('§eAuditando Clã NPCs:');
-            player.sendMessage(`§7- NPCs Totais: ${player.dimension.getEntities({typeId:'minecraft:npc'}).length}`);
+            player.sendMessage(`§7- NPCs Totais: ${player.dimension.getEntities({ typeId: 'minecraft:npc' }).length}`);
             player.sendMessage(`§7- Tags Admin: §f${player.getTags().join(', ')}`);
             player.sendMessage(`§7- Localização: §f${Math.floor(player.location.x)}, ${Math.floor(player.location.y)}, ${Math.floor(player.location.z)}`);
             return;
@@ -1850,7 +1863,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 player.sendMessage('§c[ERRO] Voce precisa ser Admin para usar este comando!');
                 return;
             }
-            
+
             const args = message.match(/!setclan\s+("([^"]+)"|(\S+))\s+(\w+)/);
             if (!args) {
                 player.sendMessage('§cUso correto: !setclan "Nick" <clan>');
@@ -1858,16 +1871,16 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 player.sendMessage('§7Clans disponiveis: red, blue, green, yellow');
                 return;
             }
-            
+
             const targetName = args[2] || args[3];
             const clanKey = args[4].toLowerCase();
-            
+
             if (!CLANS[clanKey]) {
                 player.sendMessage(`§c[ERRO] Cla "${clanKey}" invalido!`);
                 player.sendMessage('§7Clans disponiveis: red, blue, green, yellow');
                 return;
             }
-            
+
             const target = world.getAllPlayers().find(p => p.name === targetName);
             if (!target) {
                 player.sendMessage(`§c[ERRO] Jogador "${targetName}" nao encontrado ou offline!`);
@@ -1875,13 +1888,13 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 world.getAllPlayers().forEach(p => player.sendMessage(`§7- ${p.name}`));
                 return;
             }
-            
+
             const newClan = CLANS[clanKey];
             for (const key in CLANS) if (target.hasTag(CLANS[key].tag)) target.removeTag(CLANS[key].tag);
             target.addTag(newClan.tag);
             const rank = getRank(target);
             target.nameTag = `${newClan.color}${rank} da ${newClan.name}\n${newClan.color}${target.name}`;
-            
+
             player.sendMessage(`§a[SUCESSO] ${targetName} foi movido para o cla ${newClan.color}${newClan.name}§a!`);
             target.sendMessage(`§aVoce foi movido para o cla ${newClan.color}${newClan.name}§a!`);
             return;
@@ -1890,12 +1903,12 @@ world.beforeEvents.chatSend.subscribe((event) => {
         // COMANDO ALTERNATIVO: !moveclan (sintaxe mais simples)
         if (message.startsWith('!moveclan ')) {
             event.cancel = true;
-            
+
             if (!checkAdmin(player)) {
                 player.sendMessage('§c[ERRO] Voce precisa ser Admin!');
                 return;
             }
-            
+
             // Sintaxe: !moveclan NomeDoJogador red
             const parts = message.split(' ');
             if (parts.length < 3) {
@@ -1903,16 +1916,16 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 player.sendMessage('§7Exemplo: !moveclan SerafimM2025 red');
                 return;
             }
-            
+
             const targetName = parts[1];
             const clanKey = parts[2].toLowerCase();
-            
+
             if (!CLANS[clanKey]) {
                 player.sendMessage(`§c[ERRO] Cla invalido: ${clanKey}`);
                 player.sendMessage('§7Use: red, blue, green ou yellow');
                 return;
             }
-            
+
             const target = world.getAllPlayers().find(p => p.name === targetName);
             if (!target) {
                 player.sendMessage(`§c[ERRO] Jogador "${targetName}" nao encontrado!`);
@@ -1920,14 +1933,14 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 world.getAllPlayers().forEach(p => player.sendMessage(`§7- ${p.name}`));
                 return;
             }
-            
+
             const newClan = CLANS[clanKey];
-            
+
             // DEBUG: Mostrar tags antes
             const tagsBefore = target.getTags().filter(t => t.includes('clan'));
             player.sendMessage(`§7[DEBUG] Tags ANTES: ${tagsBefore.join(', ')}`);
             console.warn(`[CLANS] Tags ANTES para ${targetName}: ${target.getTags().join(', ')}`);
-            
+
             // Usar métodos nativos do Minecraft (mais confiáveis)
             system.run(() => {
                 try {
@@ -1935,15 +1948,15 @@ world.beforeEvents.chatSend.subscribe((event) => {
                     for (const key in CLANS) {
                         if (target.hasTag(CLANS[key].tag)) target.removeTag(CLANS[key].tag);
                     }
-                    
+
                     // Adicionar nova tag e atualizar nome
                     target.addTag(newClan.tag);
                     const rank = getRank(target);
                     target.nameTag = `${newClan.color}${rank} da ${newClan.name}\n${newClan.color}${target.name}`;
-                    
+
                     player.sendMessage(`§a[OK] ${targetName} -> ${newClan.color}${newClan.name}`);
                     target.sendMessage(`§aVoce agora faz parte da ${newClan.color}${newClan.name}§a!`);
-                    
+
                     console.warn(`[CLANS] ${targetName} movido para ${clanKey} com sucesso.`);
                 } catch (error) {
                     player.sendMessage(`§c[ERRO] Falha ao mudar cla: ${error}`);
@@ -1982,7 +1995,7 @@ function showShopWelcomeMenu(player) {
 
     form.show(player).then((response) => {
         if (response.canceled || response.selection === 1) return;
-        
+
         // Se escolheu acessar loja
         if (response.selection === 0) {
             system.run(() => openClanShopMainMenu(player));
@@ -2004,11 +2017,11 @@ function openClanShopMainMenu(player) {
 
     form.show(player).then((response) => {
         if (response.canceled) return;
-        
+
         const selectedCategory = SHOP_CATEGORIES[response.selection];
         // Abre o submenu da categoria escolhida
         system.run(() => {
-             openClanShopCategory(player, selectedCategory);
+            openClanShopCategory(player, selectedCategory);
         });
     }).catch(e => {
         console.warn('[CLANS] Erro ao abrir menu principal:', e);
@@ -2019,15 +2032,15 @@ function openClanShopMainMenu(player) {
 function openClanShopCategory(player, category) {
     // Debug
     console.warn(`[CLANS] Abrindo categoria: ${category.id}`);
-    
+
     const form = new ActionFormData()
-        .title(`§l${category.name.replace('\n', ' - ')}`) 
+        .title(`§l${category.name.replace('\n', ' - ')}`)
         .body(`§7Saldo: §e${getScore(player)} Coins\n§7Escolha um item para comprar:`);
 
     for (const item of category.items) {
         form.button(`${item.name}\n§e${item.price} Coins`, item.icon);
     }
-    
+
     form.button('§cVoltar', 'textures/ui/arrow_dark_left_stretch');
 
     form.show(player).then((response) => {
@@ -2037,7 +2050,7 @@ function openClanShopCategory(player, category) {
             system.run(() => openClanShopMainMenu(player));
             return;
         }
-        
+
         const selectedItem = category.items[response.selection];
         buyItem(player, selectedItem, category);
 
@@ -2053,7 +2066,7 @@ function getScore(player) {
 // 4. Lógica de Compra
 function buyItem(player, item, category) {
     const balance = getPlayerScore(player, 'coins');
-    
+
     console.warn(`[DEBUG] Tentativa de compra: Player=${player.name}, Saldo=${balance}, Preco=${item.price}`);
 
     if (balance < item.price) {
@@ -2061,7 +2074,7 @@ function buyItem(player, item, category) {
         system.run(() => openClanShopCategory(player, category));
         return;
     }
-    
+
     if (addPlayerScore(player, 'coins', -item.price)) {
         const commands = item.command.split('\n');
         for (const cmd of commands) {
@@ -2071,7 +2084,7 @@ function buyItem(player, item, category) {
     } else {
         player.sendMessage('§cErro na transacao. Compra cancelada.');
     }
-    
+
     system.run(() => openClanShopCategory(player, category));
 }
 
@@ -2079,11 +2092,11 @@ function buyItem(player, item, category) {
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const target = event.target;
     const player = event.player;
-    
+
     // A. SISTEMA DE LOJA (Prioridade Máxima)
     if (target.hasTag('clan_shop') || target.typeId === 'minecraft:npc') {
         event.cancel = true; // Impedir menu padrão de NPC
-        
+
         system.run(() => {
             showShopWelcomeMenu(player);
         });
@@ -2103,15 +2116,15 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
 function maintenanceLoop() {
     try {
         const allPlayers = world.getAllPlayers();
-        
+
         // --- 1. LIMPEZA DE PLAYERS (EFEITOS E TAGS) ---
         const badTags = ['totem_red', 'totem_blue', 'totem_green', 'totem_yellow'];
         for (const p of allPlayers) {
             for (const tag of badTags) if (p.hasTag(tag)) p.removeTag(tag);
-            
+
             const slowness = p.getEffect('slowness');
             if (slowness && slowness.amplifier >= 250) p.removeEffect('slowness');
-            
+
             const resistance = p.getEffect('resistance');
             if (resistance && resistance.amplifier >= 250) p.removeEffect('resistance');
 
@@ -2125,7 +2138,7 @@ function maintenanceLoop() {
         for (const config of TOTEM_CONFIG) {
             try {
                 const dim = world.getDimension(config.dimension);
-                
+
                 // --- NOVO: PEDESTAL DE BEDROCK E LIMPEZA DE ÁREA ---
                 const loc = config.location;
                 const x = Math.floor(loc.x);
@@ -2134,7 +2147,7 @@ function maintenanceLoop() {
 
                 // Criar base 3x3 de bedrock
                 safeRunCommand(dim, `fill ${x - 1} ${y - 1} ${z - 1} ${x + 1} ${y - 1} ${z + 1} bedrock`);
-                
+
                 // Limpar área 3x3x3 de ar ao redor do totem
                 safeRunCommand(dim, `fill ${x - 1} ${y} ${z - 1} ${x + 1} ${y + 2} ${z + 1} air`);
 
@@ -2172,7 +2185,7 @@ function maintenanceLoop() {
                     if (!entity.getEffect('resistance')) entity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
                 }
             );
-        } catch(e) {
+        } catch (e) {
             console.warn(`[CLANS] Erro crítico manutenção da loja: ${e}`);
         }
 
@@ -2222,13 +2235,13 @@ system.runInterval(() => {
                         const isSword = item.typeId.includes('sword');
                         const isBow = item.typeId.includes('bow') || item.typeId.includes('crossbow');
                         const isTool = item.typeId.includes('pickaxe') || item.typeId.includes('axe') || item.typeId.includes('shovel') || item.typeId.includes('hoe');
-                        
+
                         if (hasDurability || isSword || isBow || isTool) {
                             savedItems.push({ slot: i, item: item.clone() });
                         }
                     }
                 }
-                
+
                 const equippable = player.getComponent('equippable');
                 const equipment = {};
                 for (const slot of ['Head', 'Chest', 'Legs', 'Feet', 'Offhand']) {
@@ -2239,7 +2252,7 @@ system.runInterval(() => {
                 arenaInventoryStore.set(player.id, { items: savedItems, equipment, timestamp: Date.now() });
                 player.addTag('arena_participant');
                 player.sendMessage('§7[ARENA] Inventário protegido!');
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // SAIU DA ARENA: Limpar Snapshot para evitar abusos fora da arena
@@ -2257,7 +2270,7 @@ world.afterEvents.entityDie.subscribe((event) => {
     try {
         const dead = event.deadEntity;
         if (!dead) return;
-        
+
         const pos = dead.location;
         const dim = dead.dimension;
 
@@ -2268,7 +2281,7 @@ world.afterEvents.entityDie.subscribe((event) => {
                     try {
                         const items = dim.getEntities({ location: pos, maxDistance: 12, typeId: 'minecraft:item' });
                         for (const item of items) item.remove();
-                    } catch (e) {}
+                    } catch (e) { }
                 }, i);
             }
         }
@@ -2283,24 +2296,24 @@ world.afterEvents.playerSpawn.subscribe((event) => {
     const player = event.player;
     if (arenaInventoryStore.has(player.id)) {
         const saved = arenaInventoryStore.get(player.id);
-        
+
         system.runTimeout(() => {
             try {
                 const inv = player.getComponent('inventory').container;
                 inv.clearAll();
                 // Restaurar apenas os itens gravados na entrada
                 for (const entry of saved.items) inv.setItem(entry.slot, entry.item);
-                
+
                 const equippable = player.getComponent('equippable');
                 for (const slot in saved.equipment) {
                     if (saved.equipment[slot]) equippable.setEquipment(slot, saved.equipment[slot]);
                 }
-                
+
                 arenaInventoryStore.delete(player.id);
                 player.removeTag('arena_participant'); // Limpar tag para novo snapshot na reentrada
                 player.sendMessage('§a§lARENA: §fSeus equipamentos foram devolvidos!');
                 player.playSound('random.orb');
-            } catch (e) {}
+            } catch (e) { }
         }, 10);
     }
 });
@@ -2334,22 +2347,22 @@ system.runInterval(() => {
             }
 
         }
-    } catch (e) {}
+    } catch (e) { }
 }, 200); // Tentar a cada 10 segundos
 
 
 // Substituindo o antigo ensureEntityAtExactPosition para ser mais silencioso e seguro
 function ensureEntityAtExactPosition(dimension, typeId, selectorTags, expectedNameTag, expectedPos, extraSetupFn) {
     try {
-        const candidates = dimension.getEntities({ 
-            location: expectedPos, 
-            maxDistance: 6 
+        const candidates = dimension.getEntities({
+            location: expectedPos,
+            maxDistance: 6
         }).filter(e => e.typeId === typeId || selectorTags.some(t => e.hasTag(t)));
 
         // Remover duplicatas
         if (candidates.length > 1) {
             for (let i = 1; i < candidates.length; i++) {
-                try { candidates[i].remove(); } catch(err) {}
+                try { candidates[i].remove(); } catch (err) { }
             }
         }
 
@@ -2374,13 +2387,13 @@ function ensureEntityAtExactPosition(dimension, typeId, selectorTags, expectedNa
         if (primary && primary.isValid()) {
             if (expectedNameTag) primary.nameTag = expectedNameTag;
             for (const t of selectorTags) if (t && !primary.hasTag(t)) primary.addTag(t);
-            
+
             const loc = primary.location;
-            const dist = Math.sqrt((loc.x - (expectedPos.x + 0.5))**2 + (loc.z - (expectedPos.z + 0.5))**2);
+            const dist = Math.sqrt((loc.x - (expectedPos.x + 0.5)) ** 2 + (loc.z - (expectedPos.z + 0.5)) ** 2);
             if (dist > 1 || Math.abs(loc.y - expectedPos.y) > 1 || loc.y < -60) {
                 try {
                     primary.teleport({ x: expectedPos.x + 0.5, y: expectedPos.y, z: expectedPos.z + 0.5 }, { dimension });
-                } catch(e) {}
+                } catch (e) { }
             }
 
             if (extraSetupFn) extraSetupFn(primary);
@@ -2402,7 +2415,7 @@ function safeRunCommand(dimension, command) {
         } else if (dimension.runCommand) {
             return dimension.runCommand(command);
         }
-    } catch (e) {}
+    } catch (e) { }
 }
 
 
@@ -2416,7 +2429,7 @@ function tryAddTickingArea(dimension, location, name) {
         const z = Math.floor(location.z);
         safeRunCommand(dimension, `tickingarea remove ${name}`);
         safeRunCommand(dimension, `tickingarea add circle ${x} ${y} ${z} 4 ${name}`);
-    } catch (e) {}
+    } catch (e) { }
 }
 
 // Loop para Spawnar Partículas (Auras) dos Totens
@@ -2433,7 +2446,7 @@ system.runInterval(() => {
                     z: config.location.z + 0.5 + (Math.random() - 0.5) * 1.5
                 });
             }
-        } catch(e) {}
+        } catch (e) { }
     }
 }, 10);
 
@@ -2468,20 +2481,20 @@ function isInClanBase(player, clanKey) {
             console.warn(`[CLANS] isInClanBase: player is null/undefined`);
             return false;
         }
-        
+
         const dimension = player.dimension;
         if (!dimension) {
             console.warn(`[CLANS] isInClanBase: dimension is null/undefined`);
             return false;
         }
-        
+
         // Procura totem do clã num raio
         const totems = dimension.getEntities({
             location: player.location,
             maxDistance: CLAN_BASE_RADIUS,
             tags: [`totem_${clanKey}`]
         });
-        
+
         return totems.length > 0;
     } catch (e) {
         return false;
@@ -2494,10 +2507,10 @@ function isInClanBase(player, clanKey) {
 // Bloquear Quebra de Blocos nas Bases (Proteção de Clã)
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
     const player = event.player;
-    
+
     // Se for admin, libera tudo
     if (checkAdmin(player)) return;
-    
+
     // Se está bloqueado esperando clan, bloquear todas as ações
     if (player.hasTag('clan_selection_locked')) {
         event.cancel = true;
@@ -2509,7 +2522,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
     for (const key in CLANS) {
         if (isInClanBase(player, key)) {
             const clan = CLANS[key];
-            
+
             // Se NÃO for membro deste clã específico, bloqueia
             if (!player.hasTag(clan.tag)) {
                 event.cancel = true;
@@ -2523,14 +2536,14 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
 // Bloquear Colocação de Blocos nas Bases (Proteção de Clã)
 world.beforeEvents.playerPlaceBlock.subscribe((event) => {
     const player = event.player;
-    
+
     if (checkAdmin(player)) return;
 
     // Verificar se está na base de ALGUM clã
     for (const key in CLANS) {
         if (isInClanBase(player, key)) {
             const clan = CLANS[key];
-            
+
             // Se NÃO for membro deste clã específico, bloqueia
             if (!player.hasTag(clan.tag)) {
                 event.cancel = true;
@@ -2548,14 +2561,14 @@ console.warn('[CLANS] Script main.js carregado');
 // Bloquear Interação com Blocos nas Bases (Baús, Portas, Alavancas)
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const player = event.player;
-    
+
     if (checkAdmin(player)) return;
 
     // Verificar se está na base de ALGUM clã
     for (const key in CLANS) {
         if (isInClanBase(player, key)) {
             const clan = CLANS[key];
-            
+
             // Se NÃO for membro deste clã específico, bloqueia
             if (!player.hasTag(clan.tag)) {
                 event.cancel = true;
