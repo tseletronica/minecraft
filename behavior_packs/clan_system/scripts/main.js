@@ -60,7 +60,7 @@ const CLANS = {
         name: 'Staff',
         color: '§0',
         tag: 'clan_staff',
-        base: { x: 0, y: 0, z: 0 },
+        base: { x: 782, y: 72, z: -679 },
         dimension: 'overworld'
     },
     default: {
@@ -111,6 +111,15 @@ const TOTEM_CONFIG = [
         name: '§e§lTOTEM YELLOW',
         typeId: 'clans:totem_yellow',
         aura: 'minecraft:white_smoke_particle'
+    },
+    {
+        id: 'staff_totem',
+        location: { x: 782, y: 72, z: -679 },
+        dimension: 'overworld',
+        tag: 'totem_staff',
+        name: '§0§lTOTEM STAFF',
+        typeId: 'clans:totem_red',
+        aura: 'minecraft:obsidian_tear_particle'
     },
 ];
 
@@ -1546,14 +1555,14 @@ world.beforeEvents.chatSend.subscribe((event) => {
                 }
             }
 
-            if (!playerClan || playerClan.tag === CLANS.default.tag || playerClan.tag === CLANS.staff.tag) {
-                player.sendMessage('§cNômades e Staff não possuem uma base fixa para teleporte!');
+            if (!playerClan || playerClan.tag === CLANS.default.tag) {
+                player.sendMessage('§cNômades não possuem uma base fixa para teleporte!');
                 return;
             }
 
-            // Verificar custo (100 coins)
-            const balance = getPlayerScore(player, 'coins');
-            const cost = 100;
+            // Staff não paga teleporte
+            const isStaff = player.hasTag(CLANS.staff.tag);
+            const cost = isStaff ? 0 : 100;
 
             if (balance < cost) {
                 player.sendMessage(`§cVoce precisa de ${cost} Coins para teleportar! Seu saldo: ${balance} Coins`);
@@ -1588,20 +1597,24 @@ world.beforeEvents.chatSend.subscribe((event) => {
 
 
         // --- COMANDOS DE ADMIN (TELEPORTE E DEBUG) ---
-        if (msgLow.startsWith('!tpbase ') || (msgLow.startsWith('!base ') && msgLow.split(' ').length > 1)) {
+        if (msgLow.startsWith('!tpbase ') || (msgLow.startsWith('!base-') && msgLow.split('-').length > 1)) {
             event.cancel = true;
             // Staff e Admin podem usar
             const isStaff = player.hasTag(CLANS.staff.tag);
             if (!checkAdmin(player) && !isStaff) return;
 
-            const clanKey = msgLow.split(' ')[1];
+            // Extrair o clã (ex: !base-red -> red)
+            const parts = msgLow.split('-');
+            const clanKey = parts.length > 1 ? parts[1] : msgLow.split(' ')[1];
+
             const clan = CLANS[clanKey];
             if (!clan) {
-                player.sendMessage('§cClã inválido!');
+                player.sendMessage('§cClã inválido! Use: red, blue, green, yellow');
                 return;
             }
             system.run(() => {
-                player.teleport(clan.base, { dimension: world.getDimension(clan.dimension || 'overworld') });
+                const base = clan.base;
+                player.teleport({ x: base.x + 0.5, y: base.y + 1, z: base.z + 0.5 }, { dimension: world.getDimension(clan.dimension || 'overworld') });
                 player.sendMessage(`§a[ADMIN] Teleportado para a base do clã ${clanKey}`);
             });
             return;
@@ -2565,6 +2578,24 @@ function isInClanBase(player, clanKey) {
         return false;
     }
 }
+
+// Bloquear Explosões na Base da Staff
+world.beforeEvents.explosion.subscribe((event) => {
+    // Pegar local aproximado da explosão
+    const loc = event.source?.location || (event.getImpactedBlocks()[0] ? event.dimension.getBlock(event.getImpactedBlocks()[0]).location : null);
+
+    if (loc) {
+        const staffBase = CLANS.staff.base;
+        const dist = Math.sqrt((loc.x - staffBase.x) ** 2 + (loc.z - staffBase.z) ** 2);
+
+        // Se a explosão for no overworld e dentro do raio da Staff
+        if (event.dimension.id === 'minecraft:overworld' && dist < CLAN_BASE_RADIUS) {
+            event.cancel = true;
+            // Opcional: Avisar no log
+            // console.warn(`[CLANS] Explosão cancelada na Base Staff em ${Math.floor(loc.x)}, ${Math.floor(loc.y)}, ${Math.floor(loc.z)}`);
+        }
+    }
+});
 
 // Sistema de teleporte REMOVIDO - agora apenas lentidão e proteção
 // Jogador fica lento e imortal até escolher clan
