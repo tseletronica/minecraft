@@ -62,7 +62,7 @@ const CLANS = {
         tag: 'clan_staff',
         base: { x: 782, y: 72, z: -679 },
         dimension: 'overworld',
-        overrideRadius: 100
+        overrideRadius: 60
     },
     default: {
         name: 'Nomades',
@@ -939,7 +939,8 @@ system.runInterval(() => {
                 if (clanKey === 'default') continue;
 
                 const clan = CLANS[clanKey];
-                const inThisBase = isInBase(player, clan.base, clan.dimension || 'overworld');
+                const radius = clan.overrideRadius || CLAN_BASE_RADIUS;
+                const inThisBase = isInBase(player, clan.base, clan.dimension || 'overworld', radius);
 
                 if (inThisBase) currentBaseKey = clanKey;
 
@@ -991,7 +992,7 @@ system.runInterval(() => {
 }, 20); // Agora rodando a cada 1 segundo (20 ticks) para radar instantâneo
 
 // Helper rápido para base
-function isInBase(player, base, dimensionId) {
+function isInBase(player, base, dimensionId, customRadius) {
     // Normalizar ID da dimensão (Remover 'minecraft:' se existir para comparação)
     const pDim = player.dimension.id.replace('minecraft:', '');
     const bDim = dimensionId.replace('minecraft:', '');
@@ -999,7 +1000,8 @@ function isInBase(player, base, dimensionId) {
     if (pDim !== bDim) return false;
 
     const dist = Math.sqrt((player.location.x - base.x) ** 2 + (player.location.z - base.z) ** 2);
-    return dist < CLAN_BASE_RADIUS;
+    const radius = customRadius || CLAN_BASE_RADIUS;
+    return dist < radius;
 }
 
 //------------------------------------------
