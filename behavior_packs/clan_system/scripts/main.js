@@ -135,6 +135,9 @@ const SHOP_CONFIG = {
     typeId: 'minecraft:npc'
 };
 
+// --- NOVOS SISTEMAS DE CARGO ---
+const squireTeleportTimers = new Map(); // [PlayerName]: Timestamp de quando se afastou
+
 //------------------------------------------
 // UTILITÁRIOS
 //------------------------------------------
@@ -216,6 +219,8 @@ function getRank(player, clan) {
     if (player.hasTag(CLANS.staff.tag)) {
         if (player.hasTag('staff_adm')) return 'Administrador';
         if (player.hasTag('staff_mod')) return 'Moderador';
+        if (player.hasTag('staff_knight')) return 'Cavaleiro';
+        if (player.hasTag('staff_squire')) return 'Escudeiro';
         return 'Staff';
     }
 
@@ -883,15 +888,23 @@ system.runInterval(() => {
             // ⚪ CLÃ STAFF: Imortalidade + Pacifismo (Fraqueza)
 
             if (player.hasTag(CLANS.staff.tag)) {
+                // Imortalidade para todos da Staff (Resistência 255)
                 const res = player.getEffect('resistance');
-                if (!res || res.amplifier < 250) player.addEffect('resistance', 600, { amplifier: 255, showParticles: false });
+                if (!res || res.amplifier < 250) {
+                    player.addEffect('resistance', 600, { amplifier: 255, showParticles: false });
+                }
 
-                // Só colocar fraqueza se NÃO for "staff_adm" (Permissão de Luta)
-                if (!player.hasTag('staff_adm')) {
+                // Cargos que PODEM lutar (Sem fraqueza)
+                const canFight = player.hasTag('staff_adm') || player.hasTag('staff_knight');
+
+                if (!canFight) {
+                    // Cargos Pacifistas (Com fraqueza total)
                     const weak = player.getEffect('weakness');
-                    if (!weak || weak.amplifier < 250) player.addEffect('weakness', 600, { amplifier: 255, showParticles: false });
+                    if (!weak || weak.amplifier < 250) {
+                        player.addEffect('weakness', 600, { amplifier: 255, showParticles: false });
+                    }
                 } else {
-                    // Se era admin e tinha fraqueza, remover para permitir luta
+                    // Garantir que não tenha fraqueza se puder lutar
                     if (player.getEffect('weakness')) player.removeEffect('weakness');
                 }
             }
@@ -986,14 +999,30 @@ world.beforeEvents.entityHurt.subscribe((event) => {
 
     // 🛡️ STAFF: Proteção de Dano
     if (damager && damager.typeId === 'minecraft:player' && damager.hasTag(CLANS.staff.tag)) {
-        // 1. Se o ALVO for outro PLAYER, a Staff NUNCA pode bater (Pacifismo Total)
-        if (victim.typeId === 'minecraft:player') {
+        // 1. Escudeiro NUNCA bate em players
+        if (damager.hasTag('staff_squire') && victim.typeId === 'minecraft:player') {
             event.cancel = true;
             return;
         }
 
-        // 2. Se o ALVO for um MOB, apenas Administradores da Staff podem bater
-        if (!damager.hasTag('staff_adm')) {
+        // 2. Se o ALVO for outro PLAYER, apenas Cavaleiro e Admin podem bater (em outros clãs)
+        if (victim.typeId === 'minecraft:player') {
+            const canPvP = damager.hasTag('staff_adm') || damager.hasTag('staff_knight');
+            if (!canPvP) {
+                event.cancel = true;
+                return;
+            }
+
+            // Cavaleiro/Admin não pode bater em outros Staffs (fogo amigo)
+            if (victim.hasTag(CLANS.staff.tag)) {
+                event.cancel = true;
+                return;
+            }
+        }
+
+        // 3. Se o ALVO for um MOB, apenas Administradores e Cavaleiros podem bater
+        const canPvE = damager.hasTag('staff_adm') || damager.hasTag('staff_knight');
+        if (!canPvE) {
             event.cancel = true;
             return;
         }
@@ -1638,6 +1667,24 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        // COMANDO STAFF: LEALDADE (!lealdade)
+        if (msgLow === '!lealdade') {
+            event.cancel = true;
+            if (!player.hasTag('staff_squire')) {
+                player.sendMessage('§cApenas Escudeiros podem usar este comando!');
+                return;
+            }
+
+            if (player.hasTag('staff_loyalty_off')) {
+                player.removeTag('staff_loyalty_off');
+                player.sendMessage('§a[LEALDADE] Sistema de teleporte automático ATIVADO! Você deve seguir o Cavaleiro.');
+            } else {
+                player.addTag('staff_loyalty_off');
+                player.sendMessage('§e[LEALDADE] Sistema de teleporte automático DESATIVADO! Você tem liberdade total.');
+            }
+            return;
+        }
+
         // COMANDO ADMIN: DEFINIR BASE (!setbase red)
         if (msgLow.startsWith('!setbase ')) {
             event.cancel = true;
@@ -2206,6 +2253,59 @@ function maintenanceLoop() {
             if (p.location.y < -64) {
                 p.teleport({ x: 0, y: 100, z: 0 });
                 p.sendMessage('§e[SISTEMA] Voce foi resgatado do limbo!');
+            }
+
+            // --- NOVO: SISTEMA DE PROXIMIDADE DO ESCUDEIRO ---
+            if (p.hasTag('staff_squire') && !p.hasTag('staff_loyalty_off')) {
+                const knights = world.getAllPlayers().filter(k => k.hasTag('staff_knight') && k.dimension.id === p.dimension.id);
+
+                let isNearKnight = false;
+                let nearestKnight = null;
+                let minDist = 999999;
+
+                for (const knight of knights) {
+                    const dist = Math.sqrt(
+                        (p.location.x - knight.location.x) ** 2 +
+                        (p.location.z - knight.location.z) ** 2
+                    );
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestKnight = knight;
+                    }
+                    if (dist <= 50) {
+                        isNearKnight = true;
+                        break;
+                    }
+                }
+
+                if (knights.length > 0 && !isNearKnight) {
+                    const now = Date.now();
+                    if (!squireTeleportTimers.has(p.name)) {
+                        squireTeleportTimers.set(p.name, now);
+                        p.sendMessage('§e[LEALDADE] Você está longe do Cavaleiro! Volte em 1 minuto ou será teleportado.');
+                    } else {
+                        const secondsLeft = 60 - Math.floor((now - squireTeleportTimers.get(p.name)) / 1000);
+                        if (secondsLeft <= 0) {
+                            squireTeleportTimers.delete(p.name);
+                            if (nearestKnight) {
+                                // Teleportar com um pequeno deslocamento lateral para não ficar "dentro" do cavaleiro
+                                p.teleport(
+                                    { x: nearestKnight.location.x + 2, y: nearestKnight.location.y, z: nearestKnight.location.z + 2 },
+                                    { dimension: nearestKnight.dimension }
+                                );
+                                p.sendMessage('§a[LEALDADE] Você foi teleportado para perto do seu Cavaleiro!');
+                            }
+                        } else if (secondsLeft % 15 === 0) {
+                            // Avisar a cada 15 seg
+                            p.onScreenDisplay.setActionBar(`§eTeleporte em: §f${secondsLeft}s`);
+                        }
+                    }
+                } else {
+                    if (squireTeleportTimers.has(p.name)) {
+                        squireTeleportTimers.delete(p.name);
+                        p.sendMessage('§a[LEALDADE] Você está seguro ao lado de um Cavaleiro.');
+                    }
+                }
             }
         }
 
