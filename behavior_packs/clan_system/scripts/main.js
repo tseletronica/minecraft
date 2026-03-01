@@ -1541,7 +1541,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
         //------------------------------------------
         // TELEPORTE PARA BASE
         //------------------------------------------
-        if (message === '!base') {
+        if (msgLow === '!base') {
             // Cancelar envio global
             event.cancel = true;
 
@@ -1563,6 +1563,7 @@ world.beforeEvents.chatSend.subscribe((event) => {
             // Staff não paga teleporte
             const isStaff = player.hasTag(CLANS.staff.tag);
             const cost = isStaff ? 0 : 100;
+            const balance = getPlayerScore(player, 'coins');
 
             if (balance < cost) {
                 player.sendMessage(`§cVoce precisa de ${cost} Coins para teleportar! Seu saldo: ${balance} Coins`);
@@ -1570,27 +1571,23 @@ world.beforeEvents.chatSend.subscribe((event) => {
             }
 
             // 🛡️ TRAVA DE SEGURANÇA: Só teleporta se o pagamento passar
-            console.warn(`[DEBUG-BASE] Player: ${player.name}, Saldo pego: ${balance}, Tentando cobrar: ${cost}`);
-
             system.run(() => {
                 if (addPlayerScore(player, 'coins', -cost)) {
-                    player.sendMessage(`§eDescontado ${cost} Coins do seu saldo.`);
+                    if (cost > 0) player.sendMessage(`§eDescontado ${cost} Coins do seu saldo.`);
 
                     const base = playerClan.base;
                     const dimensionName = playerClan.dimension || 'overworld';
 
                     try {
-                        player.teleport({ x: base.x + 2, y: base.y + 0.5, z: base.z + 2 }, { dimension: world.getDimension(dimensionName) });
+                        player.teleport({ x: base.x + 0.5, y: base.y + 1, z: base.z + 0.5 }, { dimension: world.getDimension(dimensionName) });
                         player.sendMessage(`${playerClan.color}[CLAN] §aVoce foi teleportado para a base ${playerClan.name}!`);
                     } catch (e) {
                         // Se falhar o TP (ex: chunk descarregado), devolve o dinheiro
-                        addPlayerScore(player, 'coins', cost);
+                        if (cost > 0) addPlayerScore(player, 'coins', cost);
                         player.sendMessage('§cErro ao teleportar. Custo devolvido.');
                     }
                 } else {
-                    const currentObj = world.scoreboard.getObjective('coins');
-                    console.warn(`[DEBUG-BASE-ERRO] Falha ao adicionar score. Objetivo existe: ${!!currentObj}`);
-                    player.sendMessage('§cErro ao processar pagamento. Verifique se o placar "coins" existe.');
+                    player.sendMessage('§cErro ao processar pagamento.');
                 }
             });
         }
