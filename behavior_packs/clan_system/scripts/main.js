@@ -1687,6 +1687,20 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        if (msgLow === '!staffdist') {
+            event.cancel = true;
+            const staff = CLANS.staff;
+            const dist = Math.sqrt((player.location.x - staff.base.x) ** 2 + (player.location.z - staff.base.z) ** 2);
+            const radius = staff.overrideRadius || CLAN_BASE_RADIUS;
+            player.sendMessage(`§e[DEBUG STAFF]`);
+            player.sendMessage(`§7- Sua posição: ${Math.floor(player.location.x)}, ${Math.floor(player.location.z)}`);
+            player.sendMessage(`§7- Base Staff: ${staff.base.x}, ${staff.base.z}`);
+            player.sendMessage(`§7- Distância: ${dist.toFixed(2)}`);
+            player.sendMessage(`§7- Raio Configurado: ${radius}`);
+            player.sendMessage(`§7- Proteção Ativa: ${dist < radius ? '§aSIM' : '§cNÃO'}`);
+            return;
+        }
+
         // COMANDO STAFF: LEALDADE (!lealdade)
         if (msgLow === '!lealdade') {
             event.cancel = true;
