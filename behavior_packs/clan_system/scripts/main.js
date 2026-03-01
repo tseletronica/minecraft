@@ -993,13 +993,16 @@ system.runInterval(() => {
 
 // Helper rápido para base
 function isInBase(player, base, dimensionId, customRadius) {
+    if (!player || !player.dimension) return false;
+
     // Normalizar ID da dimensão (Remover 'minecraft:' se existir para comparação)
     const pDim = player.dimension.id.replace('minecraft:', '');
     const bDim = dimensionId.replace('minecraft:', '');
 
     if (pDim !== bDim) return false;
 
-    const dist = Math.sqrt((player.location.x - base.x) ** 2 + (player.location.z - base.z) ** 2);
+    const loc = player.location;
+    const dist = Math.sqrt((loc.x - base.x) ** 2 + (loc.z - base.z) ** 2);
     const radius = customRadius || CLAN_BASE_RADIUS;
     return dist < radius;
 }
