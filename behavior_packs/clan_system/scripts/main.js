@@ -61,7 +61,8 @@ const CLANS = {
         color: '§0',
         tag: 'clan_staff',
         base: { x: 782, y: 72, z: -679 },
-        dimension: 'overworld'
+        dimension: 'overworld',
+        overrideRadius: 100
     },
     default: {
         name: 'Nomades',
@@ -2683,6 +2684,8 @@ function isInClanBase(entityOrBlock, clanKey) {
         const bLoc = clan.base;
         if (!loc || !bLoc) return false;
 
+        const radius = clan.overrideRadius || CLAN_BASE_RADIUS;
+
         // Obter dimension id de forma robusta
         let dimId = 'overworld';
         if (entityOrBlock.dimension && typeof entityOrBlock.dimension.id === 'string') {
@@ -2696,7 +2699,7 @@ function isInClanBase(entityOrBlock, clanKey) {
 
         if (pDim === bDim) {
             const dist = Math.sqrt((loc.x - bLoc.x) ** 2 + (loc.z - bLoc.z) ** 2);
-            if (dist < CLAN_BASE_RADIUS) return true;
+            if (dist < radius) return true;
         }
 
         // 2. Fallback por Entidade (Apenas se tiver o método getEntities na dimensão)
@@ -2704,7 +2707,7 @@ function isInClanBase(entityOrBlock, clanKey) {
         if (dimObj && loc) {
             const totems = dimObj.getEntities({
                 location: loc,
-                maxDistance: CLAN_BASE_RADIUS,
+                maxDistance: radius,
                 tags: [`totem_${clanKey}`]
             });
             return totems.length > 0;
@@ -2725,8 +2728,10 @@ world.beforeEvents.explosion.subscribe((event) => {
     for (const block of impactedBlocks) {
         const dist = Math.sqrt((block.location.x - staffBase.x) ** 2 + (block.location.z - staffBase.z) ** 2);
 
+        const radius = CLANS.staff.overrideRadius || CLAN_BASE_RADIUS;
+
         // Blindagem total no overworld dentro do raio definido
-        if (event.dimension.id === 'minecraft:overworld' && dist < CLAN_BASE_RADIUS) {
+        if (event.dimension.id === 'minecraft:overworld' && dist < radius) {
             event.cancel = true;
             return;
         }
