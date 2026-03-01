@@ -145,7 +145,7 @@ function checkAdmin(player) {
         const colorRegex = /§[0-9a-fk-or]/g;
         return tags.some(tag => {
             const cleanTag = tag.replace(colorRegex, '').toLowerCase();
-            return cleanTag.includes('admin') || cleanTag.includes('op');
+            return cleanTag.includes('admin') || cleanTag.includes('op') || cleanTag === 'staff_adm' || cleanTag === 'staff_mod';
         });
     } catch (e) { return false; }
 }
@@ -2558,31 +2558,45 @@ system.runTimeout(() => {
 //------------------------------------------
 
 // Helper para verificar se está na base
-function isInClanBase(player, clanKey) {
+// Helper para verificar se um objeto (Player ou Block) está numa base
+function isInClanBase(entityOrBlock, clanKey) {
     try {
         const clan = CLANS[clanKey];
-        if (!clan || !player) return false;
+        if (!clan || !entityOrBlock) return false;
 
-        // 1. Checagem por Coordenadas (Prioridade - Mais Robusto)
-        const pLoc = player.location;
+        // 1. Checagem por Coordenadas (Prioridade - Funciona para Player e Block)
+        const loc = entityOrBlock.location;
         const bLoc = clan.base;
-        const pDim = player.dimension.id.replace('minecraft:', '');
+        if (!loc || !bLoc) return false;
+
+        // Obter dimension id de forma robusta
+        let dimId = 'overworld';
+        if (entityOrBlock.dimension && typeof entityOrBlock.dimension.id === 'string') {
+            dimId = entityOrBlock.dimension.id;
+        } else if (typeof entityOrBlock.dimension === 'string') {
+            dimId = entityOrBlock.dimension;
+        }
+
+        const pDim = dimId.replace('minecraft:', '');
         const bDim = (clan.dimension || 'overworld').replace('minecraft:', '');
 
         if (pDim === bDim) {
-            const dist = Math.sqrt((pLoc.x - bLoc.x) ** 2 + (pLoc.z - bLoc.z) ** 2);
+            const dist = Math.sqrt((loc.x - bLoc.x) ** 2 + (loc.z - bLoc.z) ** 2);
             if (dist < CLAN_BASE_RADIUS) return true;
         }
 
-        // 2. Fallback por Entidade (Caso o totem tenha sido movido ou algo assim)
-        const dimension = player.dimension;
-        const totems = dimension.getEntities({
-            location: player.location,
-            maxDistance: CLAN_BASE_RADIUS,
-            tags: [`totem_${clanKey}`]
-        });
+        // 2. Fallback por Entidade (Apenas se tiver o método getEntities na dimensão)
+        const dimObj = entityOrBlock.dimension?.getEntities ? entityOrBlock.dimension : null;
+        if (dimObj && loc) {
+            const totems = dimObj.getEntities({
+                location: loc,
+                maxDistance: CLAN_BASE_RADIUS,
+                tags: [`totem_${clanKey}`]
+            });
+            return totems.length > 0;
+        }
 
-        return totems.length > 0;
+        return false;
     } catch (e) {
         return false;
     }
@@ -2608,11 +2622,11 @@ world.beforeEvents.explosion.subscribe((event) => {
 // Sistema de teleporte REMOVIDO - agora apenas lentidão e proteção
 // Jogador fica lento e imortal até escolher clan
 
-// Bloquear Quebra de Blocos nas Bases (Proteção de Clã)
+// Bloquear Quebra de Blocos nas Bases (Proteção de Clã - Baseado no Bloco)
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
-    const player = event.player;
+    const { player, block } = event;
 
-    // Se for admin, libera tudo
+    // Se for admin ou staff (via checkAdmin atualizado), libera tudo
     if (checkAdmin(player)) return;
 
     // Se está bloqueado esperando clan, bloquear todas as ações
@@ -2622,9 +2636,9 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
         return;
     }
 
-    // Verificar se está na base de ALGUM clã
+    // Verificar se o BLOCO QUEBRADO está na base de ALGUM clã
     for (const key in CLANS) {
-        if (isInClanBase(player, key)) {
+        if (isInClanBase(block, key)) {
             const clan = CLANS[key];
 
             // Se NÃO for membro deste clã específico, bloqueia
@@ -2637,15 +2651,15 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
     }
 });
 
-// Bloquear Colocação de Blocos nas Bases (Proteção de Clã)
+// Bloquear Colocação de Blocos nas Bases (Proteção de Clã - Baseado no Bloco)
 world.beforeEvents.playerPlaceBlock.subscribe((event) => {
-    const player = event.player;
+    const { player, block } = event;
 
     if (checkAdmin(player)) return;
 
-    // Verificar se está na base de ALGUM clã
+    // Verificar se o LOCAL DA COLOCAÇÃO está na base de ALGUM clã
     for (const key in CLANS) {
-        if (isInClanBase(player, key)) {
+        if (isInClanBase(block, key)) {
             const clan = CLANS[key];
 
             // Se NÃO for membro deste clã específico, bloqueia
@@ -2662,15 +2676,15 @@ console.warn('[CLANS] Script main.js carregado');
 
 // (Debug movido para o chat consolidado)
 
-// Bloquear Interação com Blocos nas Bases (Baús, Portas, Alavancas)
+// Bloquear Interação com Blocos nas Bases (Baús, Portas, Alavancas - Baseado no Bloco)
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
-    const player = event.player;
+    const { player, block } = event;
 
     if (checkAdmin(player)) return;
 
-    // Verificar se está na base de ALGUM clã
+    // Verificar se o BLOCO INTERAGIDO está na base de ALGUM clã
     for (const key in CLANS) {
-        if (isInClanBase(player, key)) {
+        if (isInClanBase(block, key)) {
             const clan = CLANS[key];
 
             // Se NÃO for membro deste clã específico, bloqueia
