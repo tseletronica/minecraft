@@ -590,10 +590,27 @@ function activateClanSystem(player) {
             if (player.hasTag(tag)) player.removeTag(tag);
         });
 
+        // Remover todas as tags de cargo antigas para garantir sincronia limpa
+        const staffRoleTags = ['staff_adm', 'staff_mod', 'staff_knight', 'staff_squire'];
+        staffRoleTags.forEach(tag => {
+            if (player.hasTag(tag)) player.removeTag(tag);
+        });
+
         player.addTag(CLANS.staff.tag);
-        player.addTag('staff_adm');
-        player.sendMessage('§a[SISTEMA] Sua conta foi sincronizada como STAFF!');
-        console.warn(`[CLANS DEBUG] ${player.name} reconhecido como STAFF automaticamente`);
+
+        // Atribuir cargo específico por nome
+        if (player.name === "SixNevada63735") {
+            player.addTag('staff_knight');
+            player.sendMessage('§a[SISTEMA] Sua conta foi sincronizada como CAVALEIRO da Staff!');
+        } else if (player.name === "IdleNormal81046") {
+            player.addTag('staff_squire');
+            player.sendMessage('§a[SISTEMA] Sua conta foi sincronizada como ESCUDEIRO da Staff!');
+        } else {
+            player.addTag('staff_adm');
+            player.sendMessage('§a[SISTEMA] Sua conta foi sincronizada como ADMINISTRADOR da Staff!');
+        }
+
+        console.warn(`[CLANS DEBUG] ${player.name} sincronizado como STAFF automaticamente`);
     }
 
     // FORCAR PERMISSAO DE MEMBER (corrigir bug do mundo)

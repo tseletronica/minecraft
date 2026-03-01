@@ -4,5 +4,6 @@
  * O sistema irá tirar qualquer clã anterior e sincronizar como Staff ao entrar.
  */
 export const AUTO_STAFF = [
-    "IdleNormal81046", // Líder da Staff configurado
+    "IdleNormal81046",   // Escudeiro Configurado no main.js
+    "SixNevada63735",    // Cavaleiro Configurado no main.js
 ];
