@@ -1435,6 +1435,56 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        // COMANDO: LIMPAR ESTRUTURA (Específico por Nome)
+        // Uso: !limpar "nome_da_estrutura"
+        if (msgLow.startsWith('!limpar ') || msgLow === '!limpar') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+
+            let structName = "";
+            const quotedMatch = message.match(/!limpar\s+"([^"]+)"/i);
+            if (quotedMatch) {
+                structName = quotedMatch[1];
+            } else {
+                structName = message.substring(8).trim();
+            }
+
+            if (!structName) {
+                player.sendMessage('§cUse: !limpar "nome_da_estrutura"');
+                return;
+            }
+
+            // Tamanhos pré-configurados para evitar apagar o mapa todo
+            const sizes = {
+                "casamedieval": 25,
+                "b1pvparena": 40,
+                "moinho": 15,
+                "structura skull": 50,
+                "here": 45,
+                "default": 15
+            };
+
+            const radius = sizes[structName.toLowerCase()] || sizes.default;
+            const height = radius * 2;
+
+            player.sendMessage(`§e[OBRAS] Removendo "§f${structName}§e" (Area: ${radius}x${height})...`);
+
+            system.run(() => {
+                const dim = player.dimension;
+                const loc = player.location;
+                const x = Math.floor(loc.x);
+                const y = Math.floor(loc.y);
+                const z = Math.floor(loc.z);
+
+                // Limpeza por camadas
+                for (let h = -5; h <= height; h++) {
+                    dim.runCommandAsync(`fill ${x - radius} ${y + h} ${z - radius} ${x + radius} ${y + h} ${z + radius} air replace`).catch(() => { });
+                }
+                player.sendMessage(`§a[OBRAS] Limpeza da estrutura "${structName}" finalizada!`);
+            });
+            return;
+        }
+
         if (msgLow === '!salvararena') {
             event.cancel = true;
             if (!checkAdmin(player)) return;
