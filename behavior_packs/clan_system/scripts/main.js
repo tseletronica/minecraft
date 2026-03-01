@@ -904,8 +904,8 @@ system.runInterval(() => {
             let currentBaseKey = null;
 
             for (const clanKey in CLANS) {
-                // Staff e Nômades não têm territórios físicos ou totens
-                if (clanKey === 'staff' || clanKey === 'default') continue;
+                // Nômades (Default) não têm territórios físicos ou totens
+                if (clanKey === 'default') continue;
 
                 const clan = CLANS[clanKey];
                 const inThisBase = isInBase(player, clan.base, clan.dimension || 'overworld');
@@ -2213,6 +2213,12 @@ function maintenanceLoop() {
         }
 
         // --- 2. MANUTENÇÃO DE ENTIDADES (TOTENS E LOJA) ---
+        // Adicionar Ticking Area para a Staff também
+        try {
+            const staffDim = world.getDimension(CLANS.staff.dimension || 'overworld');
+            tryAddTickingArea(staffDim, CLANS.staff.base, 'staff_base_maint');
+        } catch (e) { }
+
         for (const config of TOTEM_CONFIG) {
             try {
                 const dim = world.getDimension(config.dimension);
@@ -2554,19 +2560,22 @@ system.runTimeout(() => {
 // Helper para verificar se está na base
 function isInClanBase(player, clanKey) {
     try {
-        // Verificação básica
-        if (!player) {
-            console.warn(`[CLANS] isInClanBase: player is null/undefined`);
-            return false;
+        const clan = CLANS[clanKey];
+        if (!clan || !player) return false;
+
+        // 1. Checagem por Coordenadas (Prioridade - Mais Robusto)
+        const pLoc = player.location;
+        const bLoc = clan.base;
+        const pDim = player.dimension.id.replace('minecraft:', '');
+        const bDim = (clan.dimension || 'overworld').replace('minecraft:', '');
+
+        if (pDim === bDim) {
+            const dist = Math.sqrt((pLoc.x - bLoc.x) ** 2 + (pLoc.z - bLoc.z) ** 2);
+            if (dist < CLAN_BASE_RADIUS) return true;
         }
 
+        // 2. Fallback por Entidade (Caso o totem tenha sido movido ou algo assim)
         const dimension = player.dimension;
-        if (!dimension) {
-            console.warn(`[CLANS] isInClanBase: dimension is null/undefined`);
-            return false;
-        }
-
-        // Procura totem do clã num raio
         const totems = dimension.getEntities({
             location: player.location,
             maxDistance: CLAN_BASE_RADIUS,
@@ -2579,20 +2588,19 @@ function isInClanBase(player, clanKey) {
     }
 }
 
-// Bloquear Explosões na Base da Staff
+// Bloquear Explosões na Base da Staff (Blindagem de Bloco Total)
 world.beforeEvents.explosion.subscribe((event) => {
-    // Pegar local aproximado da explosão
-    const loc = event.source?.location || (event.getImpactedBlocks()[0] ? event.dimension.getBlock(event.getImpactedBlocks()[0]).location : null);
+    const impactedBlocks = event.getImpactedBlocks();
+    const staffBase = CLANS.staff.base;
 
-    if (loc) {
-        const staffBase = CLANS.staff.base;
-        const dist = Math.sqrt((loc.x - staffBase.x) ** 2 + (loc.z - staffBase.z) ** 2);
+    // Se algum bloco impactado estiver na base da Staff, cancela toda a explosão
+    for (const block of impactedBlocks) {
+        const dist = Math.sqrt((block.location.x - staffBase.x) ** 2 + (block.location.z - staffBase.z) ** 2);
 
-        // Se a explosão for no overworld e dentro do raio da Staff
+        // Blindagem total no overworld dentro do raio definido
         if (event.dimension.id === 'minecraft:overworld' && dist < CLAN_BASE_RADIUS) {
             event.cancel = true;
-            // Opcional: Avisar no log
-            // console.warn(`[CLANS] Explosão cancelada na Base Staff em ${Math.floor(loc.x)}, ${Math.floor(loc.y)}, ${Math.floor(loc.z)}`);
+            return;
         }
     }
 });
