@@ -21,30 +21,35 @@ export const CLANS = {
         name: 'Nação do Fogo',
         color: '§c',
         tag: 'clan_red',
+        descSelection: 'Resistência ao fogo e força no Nether',
         ...loadClanBase('red', { x: 42, y: 43, z: -225 }, 'nether')
     },
     blue: {
         name: 'Nação da Água',
         color: '§9',
         tag: 'clan_blue',
+        descSelection: 'Respiração e velocidade na água',
         ...loadClanBase('blue', { x: -678, y: 24, z: 631 }, 'overworld')
     },
     green: {
         name: 'Nação da Terra',
         color: '§a',
         tag: 'clan_green',
+        descSelection: 'Regeneração na floresta e visão noturna',
         ...loadClanBase('green', { x: -927, y: -17, z: -976 }, 'overworld')
     },
     yellow: {
         name: 'Nação do Vento',
         color: '§e',
         tag: 'clan_yellow',
+        descSelection: 'Velocidade, pulo e queda leve',
         ...loadClanBase('yellow', { x: -483, y: 170, z: 509 }, 'overworld')
     },
     staff: {
         name: 'Black Clan',
         color: '§0',
         tag: 'clan_black',
+        descSelection: 'Administração e Ordem',
         base: { x: 782, y: 72, z: -679 },
         dimension: 'overworld'
     },

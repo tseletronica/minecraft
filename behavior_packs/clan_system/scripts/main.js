@@ -133,6 +133,20 @@ system.runInterval(() => {
 system.runInterval(() => {
     for (const player of world.getAllPlayers()) {
         if (!player.hasTag('clan_selection_locked')) {
+            // --- INTEGRIDADE DE TAGS (Garante apenas 1 clã) ---
+            const playerClanTags = [];
+            for (const key in CLANS) {
+                if (player.hasTag(CLANS[key].tag)) playerClanTags.push(CLANS[key].tag);
+            }
+
+            // Se tiver mais de um clã, prioriza o que NÃO é black/default (ou o primeiro encontrado)
+            if (playerClanTags.length > 1) {
+                const priorityClan = playerClanTags.find(t => t !== 'clan_black' && t !== 'clan_default') || playerClanTags[0];
+                playerClanTags.forEach(t => {
+                    if (t !== priorityClan) player.removeTag(t);
+                });
+            }
+
             applyRedEffects(player);
             applyBlueEffects(player);
             applyGreenEffects(player);
@@ -252,10 +266,11 @@ async function showClassSelectionMenu(player, clanKey) {
     const clan = CLANS[clanKey];
 
     const form = new ActionFormData()
-        .title(`§lCLASSE: ${clan.name}`);
+        .title(`§lCLASSE: ${clan.name}`)
+        .body(`§7Escolha sua funcao no cla ${clan.color}${clan.name}§7:`);
 
-    form.button('§l§6GUERREIRO', 'textures/items/netherite_sword');
-    form.button('§l§aCONSTRUTOR', 'textures/items/netherite_pickaxe');
+    form.button('§l§fGUERREIRO\n§r§8Focado em Combate e PVP');
+    form.button('§l§fCONSTRUTOR\n§r§8Focado em Base e Recursos');
 
     try {
         const response = await form.show(player);
@@ -267,21 +282,53 @@ async function showClassSelectionMenu(player, clanKey) {
         }
 
         const selectedClass = response.selection === 0 ? 'guerreiro' : 'construtor';
-        const classTag = `${clanKey}_${selectedClass}`;
 
+        // NOVO FLUXO: Mandar para confirmação final antes de dar as tags
+        system.runTimeout(() => {
+            if (player.isValid) showFinalConfirmationMenu(player, clanKey, selectedClass);
+        }, 5);
+
+    } catch (e) { activeMenus.delete(player.id); }
+}
+
+async function showFinalConfirmationMenu(player, clanKey, className) {
+    if (!player || activeMenus.has(player.id)) return;
+    activeMenus.add(player.id);
+
+    const clan = CLANS[clanKey];
+    const classDisplayName = className === 'guerreiro' ? '§6GUERREIRO' : '§aCONSTRUTOR';
+
+    const form = new ActionFormData()
+        .title('§l§6CONFIRMACAO FINAL')
+        .body(`§7Voce escolheu ser um ${classDisplayName}§7 da ${clan.color}${clan.name}§7.\n\n§c§lAVISO:§r §7Esta escolha e §cPERMANENTE§7 e define suas habilidades e base para sempre!`)
+        .button('§l§aCONFIRMAR ESCOLHA')
+        .button('§l§cVOLTAR E ALTERAR');
+
+    try {
+        const response = await form.show(player);
+        activeMenus.delete(player.id);
+
+        if (response.canceled || response.selection === 1) {
+            system.runTimeout(() => { if (player.isValid) showClassSelectionMenu(player, clanKey); }, 5);
+            return;
+        }
+
+        // --- APLICAR TUDO ---
+        const classTag = `${clanKey}_${className}`;
+        player.addTag(clan.tag);
         player.addTag(classTag);
         player.removeTag('clan_selection_locked');
         player.removeTag('movement_locked');
 
-        // REMOVER IMORTALIDADE APENAS NO FINAL DE TUDO
         try {
             player.removeEffect('resistance');
             player.removeEffect('slowness');
         } catch (e) { }
 
-        const rankName = selectedClass.charAt(0).toUpperCase() + selectedClass.slice(1);
-        player.nameTag = `${clan.color}[ ${rankName} ]\n§f${player.name}`;
-        player.sendMessage(`§a[SISTEMA] Você agora é um ${rankName} do clã ${clan.name}!`);
+        const rankDisplay = className.charAt(0).toUpperCase() + className.slice(1);
+        player.nameTag = `${clan.color}[ ${rankDisplay} ]\n§f${player.name}`;
+        player.sendMessage(`§a[SISTEMA] Bem-vindo à ${clan.color}${clan.name}§a como §f${rankDisplay}§a!`);
+        world.sendMessage(`${clan.color}${player.name} §7escolheu ser §f${rankDisplay} §7na ${clan.color}${clan.name}§7.`);
 
     } catch (e) { activeMenus.delete(player.id); }
 }
@@ -292,41 +339,34 @@ async function showClanSelectionMenu(player) {
     activeMenus.add(player.id);
 
     const form = new ActionFormData()
-        .title('§c§lESCOLHA SEU CLÃ');
-    form.button(`§l§cFIRE`, 'textures/items/blaze_powder');
-    form.button(`§l§9WATER`, 'textures/items/heart_of_the_sea');
-    form.button(`§l§aEARTH`, 'textures/items/emerald');
-    form.button(`§l§eWIND`, 'textures/items/feather');
+        .title('§c§lESCOLHA SUA NACAO')
+        .body('§7Selecione o cla que voce deseja jurar lealdade:');
+
+    // Botões simplificados sem ícones e com habilidade nativa
+    form.button(`§l§fNação FIRE\n§r§8Habilidade: ${CLANS.red.descSelection}`);
+    form.button(`§l§fNação WATER\n§r§8Habilidade: ${CLANS.blue.descSelection}`);
+    form.button(`§l§fNação EARTH\n§r§8Habilidade: ${CLANS.green.descSelection}`);
+    form.button(`§l§fNação WIND\n§r§8Habilidade: ${CLANS.yellow.descSelection}`);
+
     try {
         const response = await form.show(player);
         activeMenus.delete(player.id);
+
         if (response.canceled) {
             system.runTimeout(() => {
                 if (player.isValid && player.hasTag('clan_selection_locked')) showClanSelectionMenu(player);
             }, 5);
             return;
         }
-        const clanKeys = ['red', 'blue', 'green', 'yellow'];
-        const selectedClan = CLANS[clanKeys[response.selection]];
-        const confirmForm = new ActionFormData()
-            .title('§e§lCONFIRMAÇÃO DE CLÃ!')
-            .body(`§7Clã: ${selectedClan.color}[${selectedClan.name}]§7.\n\n§c§lATENÇÃO:§r §7Escolha §cPERMANENTE§7!`)
-        confirmForm.button('§a§lSIM, CONFIRMAR');
-        confirmForm.button('§c§lNÃO, VOLTAR');
-        const confirmResponse = await confirmForm.show(player);
-        if (confirmResponse.canceled || confirmResponse.selection === 1) {
-            system.runTimeout(() => {
-                if (player.isValid && player.hasTag('clan_selection_locked')) showClanSelectionMenu(player);
-            }, 5);
-            return;
-        }
-        try { player.removeEffect('resistance'); player.removeEffect('slowness'); } catch (e) { }
-        player.addTag(selectedClan.tag);
 
-        // IMEDIATAMENTE após escolher clã, forçar a classe
+        const clanKeys = ['red', 'blue', 'green', 'yellow'];
+        const clanKey = clanKeys[response.selection];
+
+        // Passo direto para a classe
         system.runTimeout(() => {
-            if (player.isValid) showClassSelectionMenu(player, clanKeys[response.selection]);
+            if (player.isValid) showClassSelectionMenu(player, clanKey);
         }, 10);
+
     } catch (error) {
         activeMenus.delete(player.id);
     }
