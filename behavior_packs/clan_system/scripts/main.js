@@ -260,7 +260,7 @@ async function showClassSelectionMenu(player, clanKey) {
 
     const form = new ActionFormData()
         .title(`§lESCOLHA SUA FUNÇÃO`)
-        .body(`${clan.color}${clan.name}\n\n§7Escolha sua função no clã:\n\n§6⚔ GUERREIRO\n§8${abilities.guerreiro}\n\n§6🏗 CONSTRUTOR\n§8${abilities.construtor}`);
+        .body(`§6⚔ GUERREIRO\n§8${abilities.guerreiro}\n\n§6🏗 CONSTRUTOR\n§8${abilities.construtor}`);
 
     form.button(`${clan.color}§l⚔ GUERREIRO`);
     form.button(`${clan.color}§l🏗 CONSTRUTOR`);
