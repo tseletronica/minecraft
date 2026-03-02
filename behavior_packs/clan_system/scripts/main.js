@@ -461,8 +461,6 @@ function buyItem(player, item, category) {
 // ==================================
 // MANUTENÇÃO UNIFICADA
 // ==================================
-const playerPersonalBaseState = new Map(); // Rastreia se jogador está em base pessoal
-
 function maintenanceLoop() {
     try {
         const allPlayers = world.getAllPlayers();
@@ -474,20 +472,6 @@ function maintenanceLoop() {
             const resistance = p.getEffect('resistance');
             if (resistance && resistance.amplifier >= 250) p.removeEffect('resistance');
             if (p.location.y < -64) { p.teleport({ x: 0, y: 100, z: 0 }); p.sendMessage('§e[SISTEMA] Resgatado do limbo!'); }
-
-            // Verificar entrada/saída de bases pessoais
-            const currentBaseOwner = getPersonalBaseOwner(p.location, p.dimension.id);
-            const previousBaseOwner = playerPersonalBaseState.get(p.name);
-            
-            if (currentBaseOwner && currentBaseOwner !== previousBaseOwner) {
-                // Entrou em uma base pessoal
-                p.sendMessage(`§e[AVISO] Entrando em casa de §f${currentBaseOwner}§e!`);
-                playerPersonalBaseState.set(p.name, currentBaseOwner);
-            } else if (!currentBaseOwner && previousBaseOwner) {
-                // Saiu de uma base pessoal
-                p.sendMessage(`§e[AVISO] Saindo de casa de §f${previousBaseOwner}§e!`);
-                playerPersonalBaseState.delete(p.name);
-            }
 
             // Escudeiro: sistema de lealdade
             if (p.hasTag('staff_squire') && !p.hasTag('staff_loyalty_off')) {
@@ -557,6 +541,27 @@ function maintenanceLoop() {
     } catch (e) { }
 }
 system.runInterval(maintenanceLoop, 1200);
+
+// === SISTEMA DE DETECÇÃO DE ÁREAS PESSOAIS ===
+const playerPersonalBaseState = new Map();
+system.runInterval(() => {
+    for (const player of world.getAllPlayers()) {
+        try {
+            const currentBaseOwner = getPersonalBaseOwner(player.location, player.dimension.id);
+            const previousBaseOwner = playerPersonalBaseState.get(player.name);
+            
+            if (currentBaseOwner && currentBaseOwner !== previousBaseOwner) {
+                // Entrou em uma base pessoal
+                player.sendMessage(`§e[AVISO] Entrando em casa de §f${currentBaseOwner}§e!`);
+                playerPersonalBaseState.set(player.name, currentBaseOwner);
+            } else if (!currentBaseOwner && previousBaseOwner) {
+                // Saiu de uma base pessoal
+                player.sendMessage(`§e[AVISO] Saindo de casa de §f${previousBaseOwner}§e!`);
+                playerPersonalBaseState.delete(player.name);
+            }
+        } catch (e) { }
+    }
+}, 20); // A cada segundo
 
 // ==================================
 // INTERAÇÕES E PROTEÇÃO DE BLOCOS
@@ -1116,20 +1121,6 @@ world.beforeEvents.chatSend.subscribe((event) => {
             player.sendMessage(`§7Admin: ${checkAdmin(player) ? '§aSIM' : '§cNÃO'} | Tags: ${player.getTags().join(', ')}`);
             return;
         }
-
-        if (message === '!testbase') {
-            event.cancel = true;
-            const owner = getPersonalBaseOwner(player.location, player.dimension.id);
-            player.sendMessage(`§e[DEBUG] Posição: ${Math.floor(player.location.x)}, ${Math.floor(player.location.z)} | Dimension: ${player.dimension.id} | Owner: ${owner || 'NENHUM'}`);
-            for (const playerName in PERSONAL_BASES) {
-                const base = PERSONAL_BASES[playerName];
-                const dist = Math.sqrt((player.location.x - base.base.x) ** 2 + (player.location.z - base.base.z) ** 2);
-                player.sendMessage(`§7${playerName}: dist=${dist.toFixed(1)}, raio=${base.radius}, dentro=${dist < base.radius ? '§aSIM' : '§cNÃO'}`);
-            }
-            return;
-        }
-
-        if (message === '!checkadmin') {
 
         if (message.startsWith('!setrei ')) {
             event.cancel = true;
