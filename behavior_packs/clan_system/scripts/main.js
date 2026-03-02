@@ -543,6 +543,8 @@ function maintenanceLoop() {
                 safeRunCommand(overworldDim, `setblock ${x} ${y} ${z} bedrock`);
             }
         } catch (e) { }
+    } catch (e) { }
+}
 system.runInterval(maintenanceLoop, 1200);
 
 // ==================================
