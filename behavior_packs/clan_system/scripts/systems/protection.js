@@ -2,7 +2,7 @@ import { world, system } from '@minecraft/server';
 import { CLANS, CLAN_BASE_RADIUS } from '../clans/clans_config.js';
 import { applyRedEffects, applyRedTotemBlessings } from '../clans/red_clan.js';
 import { applyBlueEffects, applyBlueTotemBlessings } from '../clans/blue_clan.js';
-import { applyGreenEffects, applyGreenTotemBlessings } from '../clans/green_clan.js';
+import { applyGreenEffects, applyGreenTotemBlessings, checkGreenStillness } from '../clans/green_clan.js';
 import { applyYellowEffects, applyYellowTotemBlessings } from '../clans/yellow_clan.js';
 import { applyStaffEffects, applyStaffTotemBlessings } from '../clans/staff_clan.js';
 
