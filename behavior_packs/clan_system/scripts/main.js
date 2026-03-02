@@ -609,7 +609,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
-            player.onScreenDisplay.setActionBar(`§cBase pessoal de ${personalBaseOwner}!`);
+            system.run(() => player.onScreenDisplay.setActionBar(`§cBase pessoal de ${personalBaseOwner}!`));
             return;
         }
     }
@@ -623,7 +623,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
         // Se o jogador não for do clã dono, cancela tudo (Proteção total contra invasores)
         if (!player.hasTag(playerClanTag)) {
             event.cancel = true;
-            player.onScreenDisplay.setActionBar('§cTerritório Protegido!');
+            system.run(() => player.onScreenDisplay.setActionBar('§cTerritório Protegido!'));
             return;
         }
 
@@ -632,7 +632,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
         const canBuild = player.hasTag(`${baseKey}_construtor`) || player.hasTag('clan_king');
         if (!canBuild) {
             event.cancel = true;
-            player.onScreenDisplay.setActionBar('§c✖ Apenas Construtores ou Reis podem modificar a base!');
+            system.run(() => player.onScreenDisplay.setActionBar('§c✖ Apenas Construtores ou Reis podem modificar a base!'));
             return;
         }
     }
@@ -689,7 +689,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
-            player.onScreenDisplay.setActionBar(`§cBase pessoal de ${personalBaseOwner}!`);
+            system.run(() => player.onScreenDisplay.setActionBar(`§cBase pessoal de ${personalBaseOwner}!`));
             return;
         }
     }
@@ -702,7 +702,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
         // Se o jogador não for do clã dono, cancela (Proteção total)
         if (!player.hasTag(playerClanTag)) {
             event.cancel = true;
-            player.onScreenDisplay.setActionBar('§cTerritório Protegido!');
+            system.run(() => player.onScreenDisplay.setActionBar('§cTerritório Protegido!'));
             return;
         }
 
@@ -711,7 +711,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
         const canBuild = player.hasTag(`${baseKey}_construtor`) || player.hasTag('clan_king');
         if (!canBuild) {
             event.cancel = true;
-            player.onScreenDisplay.setActionBar('§c✖ Apenas Construtores ou Reis podem construir na base!');
+            system.run(() => player.onScreenDisplay.setActionBar('§c✖ Apenas Construtores ou Reis podem construir na base!'));
             return;
         }
     }
