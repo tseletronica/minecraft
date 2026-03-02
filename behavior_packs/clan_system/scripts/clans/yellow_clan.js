@@ -79,7 +79,11 @@ export function handleYellowCombat(damager, victim) {
                     2.0, // força horizontal
                     0.8  // força vertical
                 );
-                damager.onScreenDisplay.setActionBar('§e💨 RAJADA DE VENTO! §7Inimigo arremessado.');
+                system.run(() => {
+                    try {
+                        damager.onScreenDisplay.setActionBar('§e💨 RAJADA DE VENTO! §7Inimigo arremessado.');
+                    } catch (e) { }
+                });
             } catch (e) { }
         }
     }

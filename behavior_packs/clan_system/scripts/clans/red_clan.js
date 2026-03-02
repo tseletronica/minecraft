@@ -83,7 +83,13 @@ export function handleRedCombat(damager, victim) {
         const damageIncr = Math.floor((maxHealth - currentHealth) / 4);
         if (damageIncr > 0) {
             victim.applyDamage(damageIncr, { cause: 'entityAttack', damagingEntity: damager });
-            if (Math.random() < 0.2) damager.onScreenDisplay.setActionBar(`§c🔥 FÚRIA! §7+${damageIncr} de dano.`);
+            if (Math.random() < 0.2) {
+                system.run(() => {
+                    try {
+                        damager.onScreenDisplay.setActionBar(`§c🔥 FÚRIA! §7+${damageIncr} de dano.`);
+                    } catch (e) { }
+                });
+            }
         }
 
         // 2. Chance de Incendiar (Sempre ativa para o guerreiro)

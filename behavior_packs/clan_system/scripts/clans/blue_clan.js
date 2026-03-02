@@ -87,7 +87,11 @@ export function handleBlueCombat(damager, victim) {
                 const dir = damager.getViewDirection();
                 // Knockback negativo = puxar
                 victim.applyKnockback(-dir.x, -dir.z, 1.5, 0.2);
-                damager.onScreenDisplay.setActionBar('§9⚓ ARPÃO! §7Inimigo puxado.');
+                system.run(() => {
+                    try {
+                        damager.onScreenDisplay.setActionBar('§9⚓ ARPÃO! §7Inimigo puxado.');
+                    } catch (e) { }
+                });
             } catch (e) { }
         }
 
