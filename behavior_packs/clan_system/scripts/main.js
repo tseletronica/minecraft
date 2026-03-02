@@ -238,11 +238,11 @@ async function showClassSelectionMenu(player, clanKey) {
     const clan = CLANS[clanKey];
 
     const form = new ActionFormData()
-        .title(`§lCLASSE: ${clan.name}`)
-        .body(`§7Escolha sua funcao no cla ${clan.color}${clan.name}§7:`);
+        .title(`§lESCOLHA SUA FUNÇÃO`)
+        .body(`${clan.color}${clan.name}\n\n§7Escolha sua função no clã:`);
 
-    form.button('§l§fGUERREIRO\n§r§8Focado em Combate e PVP');
-    form.button('§l§fCONSTRUTOR\n§r§8Focado em Base e Recursos');
+    form.button(`${clan.color}§l⚔ GUERREIRO\n§r§8Focado em Combate e PVP`);
+    form.button(`${clan.color}§l🏗 CONSTRUTOR\n§r§8Focado em Base e Recursos`);
 
     try {
         const response = await form.show(player);
@@ -268,13 +268,13 @@ async function showFinalConfirmationMenu(player, clanKey, className) {
     activeMenus.add(player.id);
 
     const clan = CLANS[clanKey];
-    const classDisplayName = className === 'guerreiro' ? '§6GUERREIRO' : '§aCONSTRUTOR';
+    const classDisplayName = className === 'guerreiro' ? '⚔ GUERREIRO' : '🏗 CONSTRUTOR';
 
     const form = new ActionFormData()
-        .title('§l§6CONFIRMACAO FINAL')
-        .body(`§7Voce escolheu ser um ${classDisplayName}§7 da ${clan.color}${clan.name}§7.\n\n§c§lAVISO:§r §7Esta escolha e §cPERMANENTE§7 e define suas habilidades e base para sempre!`)
-        .button('§l§aCONFIRMAR ESCOLHA')
-        .button('§l§cVOLTAR E ALTERAR');
+        .title('§l§6CONFIRMAÇÃO FINAL')
+        .body(`${clan.color}${clan.name}\n\n§7Você escolheu ser um §f${classDisplayName}§7.\n\n§c§lAVISO:§r §7Esta escolha é §cPERMANENTE§7 e define suas habilidades para sempre!`)
+        .button('§l§a✓ CONFIRMAR')
+        .button('§l§c✕ VOLTAR');
 
     try {
         const response = await form.show(player);
@@ -312,13 +312,13 @@ async function showClanSelectionMenu(player) {
 
     const form = new ActionFormData()
         .title('§c§lESCOLHA SUA NACAO')
-        .body('§7Selecione o cla que voce deseja jurar lealdade:');
+        .body('§7Selecione o clã que você deseja jurar lealdade:\n');
 
-    // Botões simplificados sem ícones e com habilidade nativa
-    form.button(`§l§fNação FIRE\n§r§8Habilidade: ${CLANS.red.descSelection}`);
-    form.button(`§l§fNação WATER\n§r§8Habilidade: ${CLANS.blue.descSelection}`);
-    form.button(`§l§fNação EARTH\n§r§8Habilidade: ${CLANS.green.descSelection}`);
-    form.button(`§l§fNação WIND\n§r§8Habilidade: ${CLANS.yellow.descSelection}`);
+    // Botões com cores temáticas, nomes em maiúsculas e habilidades em letras menores
+    form.button(`§c§lNAÇÃO DO FOGO\n§r§8Imunidade ao fogo`);
+    form.button(`§9§lNAÇÃO DA ÁGUA\n§r§8Respiração aquática`);
+    form.button(`§a§lNAÇÃO DA TERRA\n§r§8Visão noturna`);
+    form.button(`§e§lNAÇÃO DO VENTO\n§r§8Imunidade a queda`);
 
     try {
         const response = await form.show(player);
