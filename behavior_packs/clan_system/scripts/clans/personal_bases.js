@@ -4,12 +4,12 @@ export const PERSONAL_BASES = {
     'SixNevada63735': {
         base: { x: 780, y: 72, z: -722 },
         dimension: 'overworld',
-        radius: 15  // 30x30 (15 blocos de raio)
+        radius: 15
     },
     'IdleNormal81046': {
         base: { x: 820, y: 72, z: -657 },
         dimension: 'overworld',
-        radius: 15  // 30x30 (15 blocos de raio)
+        radius: 15
     }
 };
 
