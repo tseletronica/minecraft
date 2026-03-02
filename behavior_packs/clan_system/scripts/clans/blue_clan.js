@@ -23,6 +23,7 @@ export function applyBlueEffects(player) {
         // --- HABILIDADE NATIVA: Adaptação Aquática (Todos) ---
         player.addEffect('water_breathing', 600, { showParticles: false });
         player.addEffect('dolphins_grace', 600, { amplifier: 0, showParticles: false }); // Nado rápido nativo
+        player.addEffect('conduit_power', 600, { amplifier: 0, showParticles: false }); // Visão clara embaixo d'água
 
         // --- CLASSE: GUERREIRO DAS PROFUNDEZAS ---
         // Velocidade e força na água
