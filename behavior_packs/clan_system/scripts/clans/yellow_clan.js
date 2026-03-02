@@ -94,8 +94,12 @@ export function handleYellowDamageImmunity(player, event) {
         // 15% de chance de desviar do golpe (voto do vento)
         if (Math.random() < 0.15) {
             event.cancel = true;
-            player.addEffect('speed', 40, { amplifier: 1, showParticles: true }); // Velocidade II por 2s
-            player.onScreenDisplay.setActionBar('§e💨 ESQUIVA FANTASMA! §7Dano anulado.');
+            system.run(() => {
+                try {
+                    player.addEffect('speed', 40, { amplifier: 1, showParticles: true }); // Velocidade II por 2s
+                    player.onScreenDisplay.setActionBar('§e💨 ESQUIVA FANTASMA! §7Dano anulado.');
+                } catch (e) { }
+            });
             return true;
         }
     }

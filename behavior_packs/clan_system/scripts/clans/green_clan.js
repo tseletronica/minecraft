@@ -71,14 +71,19 @@ export function handleGreenCombat(damager, victim) {
     if (damager.hasTag('green_guerreiro')) {
         // Raízes: 25% de chance de enraizar + Weakness
         if (Math.random() < 0.25) {
-            victim.addEffect('slowness', 40, { amplifier: 3, showParticles: true });
-            
-            // 50% de chance de aplicar Weakness I
-            if (Math.random() < 0.50) {
-                victim.addEffect('weakness', 100, { amplifier: 0, showParticles: true });
-            }
-            
-            damager.onScreenDisplay.setActionBar('§a🌿 RAÍZES DA TERRA! §7Inimigo enraizado.');
+            // Usar system.run() para evitar erro de contexto restrito
+            system.run(() => {
+                try {
+                    victim.addEffect('slowness', 40, { amplifier: 3, showParticles: true });
+                    
+                    // 50% de chance de aplicar Weakness I
+                    if (Math.random() < 0.50) {
+                        victim.addEffect('weakness', 100, { amplifier: 0, showParticles: true });
+                    }
+                    
+                    damager.onScreenDisplay.setActionBar('§a🌿 RAÍZES DA TERRA! §7Inimigo enraizado.');
+                } catch (e) { }
+            });
         }
     }
 }

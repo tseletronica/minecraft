@@ -96,8 +96,12 @@ export function handleRedCombat(damager, victim) {
             const now = Date.now();
             const lastUse = redBerserkerCooldowns.get(damager.id) || 0;
             if (now - lastUse > 120000) { // 2 minutos de cooldown
-                damager.addEffect('resistance', 200, { amplifier: 1, showParticles: true }); // Resis II por 10s
-                damager.onScreenDisplay.setActionBar('§c🔥 ÚLTIMO SUSPIRO! §7Resistência II ativada.');
+                system.run(() => {
+                    try {
+                        damager.addEffect('resistance', 200, { amplifier: 1, showParticles: true }); // Resis II por 10s
+                        damager.onScreenDisplay.setActionBar('§c🔥 ÚLTIMO SUSPIRO! §7Resistência II ativada.');
+                    } catch (e) { }
+                });
                 redBerserkerCooldowns.set(damager.id, now);
             }
         }

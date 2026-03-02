@@ -93,13 +93,17 @@ export function handleBlueCombat(damager, victim) {
 
         // 2. Onda de Choque: 25% de chance de Lentidão e Fraqueza
         if (chance >= 0.25 && chance < 0.50) {
-            victim.addEffect('slowness', 60, { amplifier: 1, showParticles: true });
-            if (victim.isInWater || damager.isInWater) {
-                victim.addEffect('weakness', 100, { amplifier: 1, showParticles: true }); // Fraqueza II na água
-                damager.onScreenDisplay.setActionBar('§9🌊 DOMÍNIO AQUÁTICO! §7Inimigo enfraquecido.');
-            } else {
-                damager.onScreenDisplay.setActionBar('§9🌊 ONDA DE CHOQUE! §7Inimigo atordoado.');
-            }
+            system.run(() => {
+                try {
+                    victim.addEffect('slowness', 60, { amplifier: 1, showParticles: true });
+                    if (victim.isInWater || damager.isInWater) {
+                        victim.addEffect('weakness', 100, { amplifier: 1, showParticles: true }); // Fraqueza II na água
+                        damager.onScreenDisplay.setActionBar('§9🌊 DOMÍNIO AQUÁTICO! §7Inimigo enfraquecido.');
+                    } else {
+                        damager.onScreenDisplay.setActionBar('§9🌊 ONDA DE CHOQUE! §7Inimigo atordoado.');
+                    }
+                } catch (e) { }
+            });
         }
         return;
     }
