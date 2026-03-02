@@ -24,7 +24,13 @@ export function isInPersonalBase(location, dimension, playerName) {
     const base = PERSONAL_BASES[playerName];
     if (!base) return false;
     
-    const dimId = dimension.id ? dimension.id.replace('minecraft:', '') : dimension;
+    // Garantir que dimId é sempre uma string sem prefixo
+    let dimId = dimension;
+    if (typeof dimension === 'object' && dimension.id) {
+        dimId = dimension.id;
+    }
+    dimId = dimId.replace('minecraft:', '');
+    
     const baseDim = base.dimension.replace('minecraft:', '');
     
     if (dimId !== baseDim) return false;
