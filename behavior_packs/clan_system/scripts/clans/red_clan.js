@@ -99,7 +99,11 @@ export function handleRedCombat(damager, victim) {
 
         // 2. Chance de Incendiar (Sempre ativa para o guerreiro)
         if (Math.random() < 0.30) {
-            victim.setOnFire(5);
+            system.run(() => {
+                try {
+                    victim.setOnFire(5);
+                } catch (e) { }
+            });
         }
 
         // 3. Sobrevivência (Resistência II se vida < 6 HP)
@@ -121,9 +125,9 @@ export function handleRedCombat(damager, victim) {
 
     // Nativo/Construtor/Rei: 15% de chance por 3 segundos
     if (Math.random() < 0.15) {
-        victim.setOnFire(3);
         system.run(() => {
             try {
+                victim.setOnFire(3);
                 damager.onScreenDisplay.setActionBar('§c🔥 LÂMINA DE LABAREDA! §7Inimigo incendiado.');
             } catch (e) { }
         });
