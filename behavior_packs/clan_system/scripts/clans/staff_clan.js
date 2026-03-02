@@ -68,7 +68,11 @@ export function handleStaffCombat(damager, victim, event) {
     // Escudeiro não ataca ninguém (vítima player)
     if (damager.hasTag('staff_squire') && victim.typeId === 'minecraft:player') {
         if (event) event.cancel = true;
-        damager.onScreenDisplay.setActionBar('§cEscudeiros sao pacificos!');
+        system.run(() => {
+            try {
+                damager.onScreenDisplay.setActionBar('§cEscudeiros sao pacificos!');
+            } catch (e) { }
+        });
         return;
     }
 

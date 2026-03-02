@@ -137,9 +137,13 @@ export function checkGreenStillness(player) {
         if (!greenStillTime.has(player.id)) greenStillTime.set(player.id, startTime);
 
         if (Date.now() - startTime > 3000) { // 3 segundos parado
-            player.addEffect('regeneration', 40, { amplifier: 0, showParticles: true });
-            player.addEffect('resistance', 40, { amplifier: 0, showParticles: false });
-            player.onScreenDisplay.setActionBar('§a🌿 MEDITAÇÃO DA TERRA. §7Regenerando...');
+            system.run(() => {
+                try {
+                    player.addEffect('regeneration', 40, { amplifier: 0, showParticles: true });
+                    player.addEffect('resistance', 40, { amplifier: 0, showParticles: false });
+                    player.onScreenDisplay.setActionBar('§a🌿 MEDITAÇÃO DA TERRA. §7Regenerando...');
+                } catch (e) { }
+            });
         }
     } else {
         greenStillTime.delete(player.id);
@@ -167,7 +171,11 @@ export function handleGreenBreakBlock(player, block, dimension) {
     if (Math.random() < 0.15) {
         // Bedrock API: Não temos como cancelar o dano ao item diretamente sem cancelar o evento.
         // Simulamos avisando o player que a ferramenta brilhou (Vibe RPG) ou apenas feedback visual.
-        player.onScreenDisplay.setActionBar('§a🛠️ MESTRE DE FERRAMENTAS! §7Durabilidade preservada.');
+        system.run(() => {
+            try {
+                player.onScreenDisplay.setActionBar('§a🛠️ MESTRE DE FERRAMENTAS! §7Durabilidade preservada.');
+            } catch (e) { }
+        });
     }
 
     // --- CLASSE: CONSTRUTOR (Geólogo) ---

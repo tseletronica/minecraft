@@ -117,7 +117,11 @@ export function handleRedCombat(damager, victim) {
     // Nativo/Construtor/Rei: 15% de chance por 3 segundos
     if (Math.random() < 0.15) {
         victim.setOnFire(3);
-        damager.onScreenDisplay.setActionBar('§c🔥 LÂMINA DE LABAREDA! §7Inimigo incendiado.');
+        system.run(() => {
+            try {
+                damager.onScreenDisplay.setActionBar('§c🔥 LÂMINA DE LABAREDA! §7Inimigo incendiado.');
+            } catch (e) { }
+        });
     }
 }
 

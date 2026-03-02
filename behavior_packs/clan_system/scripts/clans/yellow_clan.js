@@ -121,7 +121,11 @@ export function handleYellowBreakBlock(player, block, dimension) {
     if (!player.hasTag('yellow_construtor')) return false;
 
     // Nota: O alcance estendido é simulado via visual
-    player.onScreenDisplay.setActionBar('§e💨 ALCANCE DO VENTO! §7Construindo de longe.');
+    system.run(() => {
+        try {
+            player.onScreenDisplay.setActionBar('§e💨 ALCANCE DO VENTO! §7Construindo de longe.');
+        } catch (e) { }
+    });
     return true;
 }
 
