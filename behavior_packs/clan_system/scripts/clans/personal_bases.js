@@ -1,5 +1,3 @@
-import { world } from '@minecraft/server';
-
 // Configuração de bases pessoais por jogador
 // Formato: playerName -> { base: {x, y, z}, dimension, radius }
 export const PERSONAL_BASES = {
