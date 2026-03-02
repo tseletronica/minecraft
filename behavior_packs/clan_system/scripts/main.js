@@ -1087,11 +1087,49 @@ world.beforeEvents.chatSend.subscribe((event) => {
             return;
         }
 
+        if (message === '!cleantotems') {
+            event.cancel = true;
+            if (!checkAdmin(player)) return;
+            try {
+                const dim = world.getDimension('overworld');
+                // Remove qualquer totem órfão (não configurado)
+                const allTotems = dim.getEntities({ tags: ['totem_npc'] });
+                let removed = 0;
+                for (const totem of allTotems) {
+                    const isConfigured = TOTEM_CONFIG.some(config => 
+                        Math.abs(totem.location.x - config.location.x) < 2 &&
+                        Math.abs(totem.location.z - config.location.z) < 2
+                    );
+                    if (!isConfigured) {
+                        try { totem.remove(); removed++; } catch (e) { }
+                    }
+                }
+                player.sendMessage(`§a${removed} totem(ns) órfão(s) removido(s)!`);
+            } catch (e) {
+                player.sendMessage(`§cErro: ${e}`);
+            }
+            return;
+        }
+
         if (message === '!checkadmin') {
             event.cancel = true;
             player.sendMessage(`§7Admin: ${checkAdmin(player) ? '§aSIM' : '§cNÃO'} | Tags: ${player.getTags().join(', ')}`);
             return;
         }
+
+        if (message === '!testbase') {
+            event.cancel = true;
+            const owner = getPersonalBaseOwner(player.location, player.dimension.id);
+            player.sendMessage(`§e[DEBUG] Posição: ${Math.floor(player.location.x)}, ${Math.floor(player.location.z)} | Dimension: ${player.dimension.id} | Owner: ${owner || 'NENHUM'}`);
+            for (const playerName in PERSONAL_BASES) {
+                const base = PERSONAL_BASES[playerName];
+                const dist = Math.sqrt((player.location.x - base.base.x) ** 2 + (player.location.z - base.base.z) ** 2);
+                player.sendMessage(`§7${playerName}: dist=${dist.toFixed(1)}, raio=${base.radius}, dentro=${dist < base.radius ? '§aSIM' : '§cNÃO'}`);
+            }
+            return;
+        }
+
+        if (message === '!checkadmin') {
 
         if (message.startsWith('!setrei ')) {
             event.cancel = true;
