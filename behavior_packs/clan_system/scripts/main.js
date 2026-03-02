@@ -338,7 +338,7 @@ async function showClanSelectionMenu(player) {
     // Botões com cores temáticas, nomes em maiúsculas e habilidades em letras menores
     form.button(`§c§lNAÇÃO DO FOGO\n§r§8Imunidade ao fogo`);
     form.button(`§9§lNAÇÃO DA ÁGUA\n§r§8Respiração aquática`);
-    form.button(`§a§lNAÇÃO DA TERRA\n§r§8Visão noturna`);
+    form.button(`§a§lNAÇÃO DA TERRA\n§r§8Imunidade a mobs neutros`);
     form.button(`§e§lNAÇÃO DO VENTO\n§r§8Imunidade a queda`);
 
     try {
