@@ -647,7 +647,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // Helper para descobrir base de um bloco
-export function getCurrentBaseKey(blockOrLoc) {
+function getCurrentBaseKey(blockOrLoc) {
     const loc = blockOrLoc.location || blockOrLoc;
     for (const key in CLANS) {
         if (key === 'default') continue;
@@ -663,7 +663,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
     if (checkAdmin(player)) return;
 
     // 0. Verificação de Base Pessoal (prioridade máxima)
-    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension);
+    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension.id);
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
@@ -700,7 +700,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     if (checkAdmin(player)) return;
 
     // Verificar bases pessoais
-    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension);
+    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension.id);
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
