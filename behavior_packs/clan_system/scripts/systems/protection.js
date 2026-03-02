@@ -60,8 +60,9 @@ system.runInterval(() => {
             let currentBaseKey = null;
 
             for (const clanKey in CLANS) {
-                if (clanKey === 'default') continue;
+                if (clanKey === 'default' || clanKey === 'staff') continue;
                 const clan = CLANS[clanKey];
+                if (!clan.base) continue;
                 const radius = clan.overrideRadius || CLAN_BASE_RADIUS;
                 const inThisBase = isInBase(player, clan.base, clan.dimension || 'overworld', radius);
                 if (inThisBase) currentBaseKey = clanKey;
@@ -73,7 +74,6 @@ system.runInterval(() => {
                         case 'blue': applyBlueTotemBlessings(player); break;
                         case 'green': applyGreenTotemBlessings(player); break;
                         case 'yellow': applyYellowTotemBlessings(player); break;
-                        case 'staff': applyStaffTotemBlessings(player); break;
                     }
                 }
             }
