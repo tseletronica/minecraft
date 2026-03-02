@@ -17,41 +17,46 @@ import { getPlayerScore } from '../systems/utils.js';
 
 // Aplica efeitos passivos do clã Red e de suas classes
 export function applyRedEffects(player) {
+    if (!player || !player.isValid) return;
     if (!player.hasTag(CLANS.red.tag)) return;
 
-    // --- HABILIDADE NATIVA: Imunidade ao Fogo (Todos) ---
-    player.addEffect('fire_resistance', 600, { showParticles: false });
+    try {
+        // --- HABILIDADE NATIVA: Imunidade ao Fogo (Todos) ---
+        player.addEffect('fire_resistance', 600, { showParticles: false });
 
-    // --- CLASSE: GUERREIRO ---
-    // Bônus passivo: Força I permanente
-    if (player.hasTag('red_guerreiro')) {
-        player.addEffect('strength', 600, { amplifier: 0, showParticles: false });
-    }
+        // --- CLASSE: GUERREIRO ---
+        // Bônus passivo: Força I permanente
+        if (player.hasTag('red_guerreiro')) {
+            player.addEffect('strength', 600, { amplifier: 0, showParticles: false });
+        }
 
-    // --- CLASSE: CONSTRUTOR ---
-    // Bônus passivo: Haste II (minera 2x mais rápido)
-    if (player.hasTag('red_construtor')) {
-        player.addEffect('haste', 600, { amplifier: 1, showParticles: false });
-    }
+        // --- CLASSE: CONSTRUTOR ---
+        // Bônus passivo: Haste II (minera 2x mais rápido)
+        if (player.hasTag('red_construtor')) {
+            player.addEffect('haste', 600, { amplifier: 1, showParticles: false });
+        }
 
-    // --- CLASSE: REI ---
-    // Aura Real: Resistência II + Força II para aliados próximos
-    if (player.hasTag('clan_king') && player.hasTag(CLANS.red.tag)) {
-        try {
-            const allies = world.getAllPlayers().filter(p =>
-                p.hasTag(CLANS.red.tag) && p.id !== player.id
-            );
-            for (const ally of allies) {
-                const dist = Math.sqrt(
-                    (ally.location.x - player.location.x) ** 2 +
-                    (ally.location.z - player.location.z) ** 2
+        // --- CLASSE: REI ---
+        // Aura Real: Resistência II + Força II para aliados próximos
+        if (player.hasTag('clan_king') && player.hasTag(CLANS.red.tag)) {
+            try {
+                const allies = world.getAllPlayers().filter(p =>
+                    p.hasTag(CLANS.red.tag) && p.id !== player.id
                 );
-                if (dist <= 20) {
-                    ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true }); // Resis II
-                    ally.addEffect('strength', 300, { amplifier: 1, showParticles: true });   // Força II
+                for (const ally of allies) {
+                    const dist = Math.sqrt(
+                        (ally.location.x - player.location.x) ** 2 +
+                        (ally.location.z - player.location.z) ** 2
+                    );
+                    if (dist <= 20) {
+                        ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true }); // Resis II
+                        ally.addEffect('strength', 300, { amplifier: 1, showParticles: true });   // Força II
+                    }
                 }
-            }
-        } catch (e) { }
+            } catch (e) { }
+        }
+    } catch (e) {
+        // Silenciosamente ignora erros de efeitos inválidos
     }
 }
 

@@ -15,44 +15,49 @@ import { CLANS } from './clans_config.js';
 // ============================================================
 
 export function applyGreenEffects(player) {
+    if (!player || !player.isValid) return;
     if (!player.hasTag(CLANS.green.tag)) return;
 
-    // --- HABILIDADE NATIVA: Visão Noturna ---
-    player.addEffect('night_vision', 600, { showParticles: false });
+    try {
+        // --- HABILIDADE NATIVA: Visão Noturna ---
+        player.addEffect('night_vision', 600, { showParticles: false });
 
-    // --- CLASSE: GUARDIÃO DA FLORESTA ---
-    // Balanceamento: Aumentar defesa
-    if (player.hasTag('green_guerreiro')) {
-        player.addEffect('resistance', 600, { amplifier: 0, showParticles: false });   // Resistance I (NOVO)
-        player.addEffect('regeneration', 600, { amplifier: 1, showParticles: false }); // Regen II (era I)
-        player.addEffect('absorption', 600, { amplifier: 1, showParticles: false });   // Absorption II (era I)
-    }
+        // --- CLASSE: GUARDIÃO DA FLORESTA ---
+        // Balanceamento: Aumentar defesa
+        if (player.hasTag('green_guerreiro')) {
+            player.addEffect('resistance', 600, { amplifier: 0, showParticles: false });   // Resistance I (NOVO)
+            player.addEffect('regeneration', 600, { amplifier: 1, showParticles: false }); // Regen II (era I)
+            player.addEffect('absorption', 600, { amplifier: 1, showParticles: false });   // Absorption II (era I)
+        }
 
-    // --- CLASSE: MESTRE DA TERRA (Construtor) ---
-    // Haste II padrão / Haste III nas profundezas (Abaixo de Y=0)
-    if (player.hasTag('green_construtor')) {
-        const isDeep = player.location.y < 0;
-        player.addEffect('haste', 600, { amplifier: isDeep ? 2 : 1, showParticles: false }); // Haste III ou II
-    }
+        // --- CLASSE: MESTRE DA TERRA (Construtor) ---
+        // Haste II padrão / Haste III nas profundezas (Abaixo de Y=0)
+        if (player.hasTag('green_construtor')) {
+            const isDeep = player.location.y < 0;
+            player.addEffect('haste', 600, { amplifier: isDeep ? 2 : 1, showParticles: false }); // Haste III ou II
+        }
 
-    // --- CLASSE: REI ---
-    // Aura Real: Resistência II + Absorção II para aliados próximos
-    if (player.hasTag('clan_king') && player.hasTag(CLANS.green.tag)) {
-        try {
-            const allies = world.getAllPlayers().filter(p =>
-                p.hasTag(CLANS.green.tag) && p.id !== player.id
-            );
-            for (const ally of allies) {
-                const dist = Math.sqrt(
-                    (ally.location.x - player.location.x) ** 2 +
-                    (ally.location.z - player.location.z) ** 2
+        // --- CLASSE: REI ---
+        // Aura Real: Resistência II + Absorção II para aliados próximos
+        if (player.hasTag('clan_king') && player.hasTag(CLANS.green.tag)) {
+            try {
+                const allies = world.getAllPlayers().filter(p =>
+                    p.hasTag(CLANS.green.tag) && p.id !== player.id
                 );
-                if (dist <= 20) {
-                    ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true }); // Resis II
-                    ally.addEffect('absorption', 300, { amplifier: 1, showParticles: true }); // 4 corações extras (Abs II)
+                for (const ally of allies) {
+                    const dist = Math.sqrt(
+                        (ally.location.x - player.location.x) ** 2 +
+                        (ally.location.z - player.location.z) ** 2
+                    );
+                    if (dist <= 20) {
+                        ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true }); // Resis II
+                        ally.addEffect('absorption', 300, { amplifier: 1, showParticles: true }); // 4 corações extras (Abs II)
+                    }
                 }
-            }
-        } catch (e) { }
+            } catch (e) { }
+        }
+    } catch (e) {
+        // Silenciosamente ignora erros de efeitos inválidos
     }
 }
 

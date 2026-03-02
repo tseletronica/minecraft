@@ -16,47 +16,52 @@ import { CLANS } from './clans_config.js';
 
 // Aplica efeitos passivos do clã Blue e de suas classes
 export function applyBlueEffects(player) {
+    if (!player || !player.isValid) return;
     if (!player.hasTag(CLANS.blue.tag)) return;
 
-    // --- HABILIDADE NATIVA: Adaptação Aquática (Todos) ---
-    player.addEffect('water_breathing', 600, { showParticles: false });
-    player.addEffect('dolphins_grace', 600, { amplifier: 0, showParticles: false }); // Nado rápido nativo
+    try {
+        // --- HABILIDADE NATIVA: Adaptação Aquática (Todos) ---
+        player.addEffect('water_breathing', 600, { showParticles: false });
+        player.addEffect('dolphins_grace', 600, { amplifier: 0, showParticles: false }); // Nado rápido nativo
 
-    // --- CLASSE: GUERREIRO DAS PROFUNDEZAS ---
-    // Velocidade e força na água
-    if (player.hasTag('blue_guerreiro')) {
-        if (player.isInWater) {
-            player.addEffect('speed', 300, { amplifier: 1, showParticles: false });  // Velocidade II na água
-            player.addEffect('strength', 300, { amplifier: 0, showParticles: false }); // Força I na água
-        }
-    }
-
-    // --- CLASSE: CONSTRUTOR ---
-    // Haste II permanente / Haste III na água
-    if (player.hasTag('blue_construtor')) {
-        const amplifier = player.isInWater ? 2 : 1;
-        player.addEffect('haste', 600, { amplifier: amplifier, showParticles: false });
-    }
-
-    // --- CLASSE: REI ---
-    // Aura Real: Resistência II + Regeneração II para aliados próximos
-    if (player.hasTag('clan_king') && player.hasTag(CLANS.blue.tag)) {
-        try {
-            const allies = world.getAllPlayers().filter(p =>
-                p.hasTag(CLANS.blue.tag) && p.id !== player.id
-            );
-            for (const ally of allies) {
-                const dist = Math.sqrt(
-                    (ally.location.x - player.location.x) ** 2 +
-                    (ally.location.z - player.location.z) ** 2
-                );
-                if (dist <= 20) {
-                    ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true });  // Resis II
-                    ally.addEffect('regeneration', 300, { amplifier: 1, showParticles: true }); // Regen II
-                    ally.addEffect('water_breathing', 300, { showParticles: false });
-                }
+        // --- CLASSE: GUERREIRO DAS PROFUNDEZAS ---
+        // Velocidade e força na água
+        if (player.hasTag('blue_guerreiro')) {
+            if (player.isInWater) {
+                player.addEffect('speed', 300, { amplifier: 1, showParticles: false });  // Velocidade II na água
+                player.addEffect('strength', 300, { amplifier: 0, showParticles: false }); // Força I na água
             }
-        } catch (e) { }
+        }
+
+        // --- CLASSE: CONSTRUTOR ---
+        // Haste II permanente / Haste III na água
+        if (player.hasTag('blue_construtor')) {
+            const amplifier = player.isInWater ? 2 : 1;
+            player.addEffect('haste', 600, { amplifier: amplifier, showParticles: false });
+        }
+
+        // --- CLASSE: REI ---
+        // Aura Real: Resistência II + Regeneração II para aliados próximos
+        if (player.hasTag('clan_king') && player.hasTag(CLANS.blue.tag)) {
+            try {
+                const allies = world.getAllPlayers().filter(p =>
+                    p.hasTag(CLANS.blue.tag) && p.id !== player.id
+                );
+                for (const ally of allies) {
+                    const dist = Math.sqrt(
+                        (ally.location.x - player.location.x) ** 2 +
+                        (ally.location.z - player.location.z) ** 2
+                    );
+                    if (dist <= 20) {
+                        ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true });  // Resis II
+                        ally.addEffect('regeneration', 300, { amplifier: 1, showParticles: true }); // Regen II
+                        ally.addEffect('water_breathing', 300, { showParticles: false });
+                    }
+                }
+            } catch (e) { }
+        }
+    } catch (e) {
+        // Silenciosamente ignora erros de efeitos inválidos
     }
 }
 

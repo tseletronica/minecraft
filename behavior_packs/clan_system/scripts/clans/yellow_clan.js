@@ -16,43 +16,48 @@ import { CLANS } from './clans_config.js';
 
 // Aplica efeitos passivos do clã Yellow e de suas classes
 export function applyYellowEffects(player) {
+    if (!player || !player.isValid) return;
     if (!player.hasTag(CLANS.yellow.tag)) return;
 
-    // --- HABILIDADE NATIVA: Éter (Todos) ---
-    player.addEffect('speed', 600, { amplifier: 0, showParticles: false }); // Velocidade I Nativa
-    // Imunidade à queda é tratada em handleYellowDamageImmunity
+    try {
+        // --- HABILIDADE NATIVA: Éter (Todos) ---
+        player.addEffect('speed', 600, { amplifier: 0, showParticles: false }); // Velocidade I Nativa
+        // Imunidade à queda é tratada em handleYellowDamageImmunity
 
-    // --- CLASSE: CAÇADOR DO CÉU (Guerreiro) ---
-    // Evolução da velocidade nativa + Salto II
-    if (player.hasTag('yellow_guerreiro')) {
-        player.addEffect('speed', 300, { amplifier: 1, showParticles: false });     // Velocidade II
-        player.addEffect('jump_boost', 300, { amplifier: 1, showParticles: false }); // Salto II
-    }
+        // --- CLASSE: CAÇADOR DO CÉU (Guerreiro) ---
+        // Evolução da velocidade nativa + Salto II
+        if (player.hasTag('yellow_guerreiro')) {
+            player.addEffect('speed', 300, { amplifier: 1, showParticles: false });     // Velocidade II
+            player.addEffect('jump_boost', 300, { amplifier: 1, showParticles: false }); // Salto II
+        }
 
-    // --- CLASSE: ENGENHEIRO DO VENTO (Construtor) ---
-    // Balanceamento: Reduzir Haste IV para Haste III
-    if (player.hasTag('yellow_construtor')) {
-        player.addEffect('haste', 600, { amplifier: 2, showParticles: false }); // Haste III (era IV)
-    }
+        // --- CLASSE: ENGENHEIRO DO VENTO (Construtor) ---
+        // Balanceamento: Reduzir Haste IV para Haste III
+        if (player.hasTag('yellow_construtor')) {
+            player.addEffect('haste', 600, { amplifier: 2, showParticles: false }); // Haste III (era IV)
+        }
 
-    // --- CLASSE: REI ---
-    // Aura Real: Resistência II + Velocidade II para aliados próximos
-    if (player.hasTag('clan_king') && player.hasTag(CLANS.yellow.tag)) {
-        try {
-            const allies = world.getAllPlayers().filter(p =>
-                p.hasTag(CLANS.yellow.tag) && p.id !== player.id
-            );
-            for (const ally of allies) {
-                const dist = Math.sqrt(
-                    (ally.location.x - player.location.x) ** 2 +
-                    (ally.location.z - player.location.z) ** 2
+        // --- CLASSE: REI ---
+        // Aura Real: Resistência II + Velocidade II para aliados próximos
+        if (player.hasTag('clan_king') && player.hasTag(CLANS.yellow.tag)) {
+            try {
+                const allies = world.getAllPlayers().filter(p =>
+                    p.hasTag(CLANS.yellow.tag) && p.id !== player.id
                 );
-                if (dist <= 20) {
-                    ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true }); // Resis II
-                    ally.addEffect('speed', 300, { amplifier: 1, showParticles: true });      // Velocidade II
+                for (const ally of allies) {
+                    const dist = Math.sqrt(
+                        (ally.location.x - player.location.x) ** 2 +
+                        (ally.location.z - player.location.z) ** 2
+                    );
+                    if (dist <= 20) {
+                        ally.addEffect('resistance', 300, { amplifier: 1, showParticles: true }); // Resis II
+                        ally.addEffect('speed', 300, { amplifier: 1, showParticles: true });      // Velocidade II
+                    }
                 }
-            }
-        } catch (e) { }
+            } catch (e) { }
+        }
+    } catch (e) {
+        // Silenciosamente ignora erros de efeitos inválidos
     }
 }
 
