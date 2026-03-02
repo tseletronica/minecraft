@@ -89,24 +89,10 @@ const greenStillTime = new Map();
 export function handleGreenDamageImmunity(player, event) {
     if (!player.hasTag(CLANS.green.tag)) return false;
 
-    // --- CLASSE: GUARDIÃO (Reflexão de Dano/Thorns) ---
-    if (player.hasTag('green_guerreiro')) {
-        const damager = event.damageSource.damagingEntity;
-        if (damager && damager.isValid && Math.random() < 0.15) {
-            const reflected = Math.ceil(event.damage / 2);
-            system.run(() => {
-                try {
-                    if (damager.isValid) {
-                        damager.applyDamage(reflected, { cause: 'thorns', damagingEntity: player });
-                        player.onScreenDisplay.setActionBar(`§a🛡️ PELE DE ROCHA! §7Refletido ${reflected} de dano.`);
-                    }
-                } catch (e) { }
-            });
-        }
-    }
+    const source = event.damageSource.damagingEntity;
 
     // --- HABILIDADE NATIVA: Manto da Natureza (PvE) ---
-    const source = event.damageSource.damagingEntity;
+    // Imunidade a mobs comuns (não a chefes)
     if (source && source.typeId !== 'minecraft:player') {
         const bosses = ['minecraft:ender_dragon', 'minecraft:wither', 'minecraft:warden', 'minecraft:elder_guardian'];
         if (!bosses.includes(source.typeId)) {
@@ -114,6 +100,23 @@ export function handleGreenDamageImmunity(player, event) {
             return true;
         }
     }
+
+    // --- CLASSE: GUARDIÃO (Reflexão de Dano/Thorns) - APENAS PvP ---
+    // Thorns só funciona contra PLAYERS, não contra mobs
+    if (player.hasTag('green_guerreiro') && source && source.typeId === 'minecraft:player') {
+        if (Math.random() < 0.15) {
+            const reflected = Math.ceil(event.damage / 2);
+            system.run(() => {
+                try {
+                    if (source.isValid) {
+                        source.applyDamage(reflected, { cause: 'thorns', damagingEntity: player });
+                        player.onScreenDisplay.setActionBar(`§a🛡️ PELE DE ROCHA! §7Refletido ${reflected} de dano.`);
+                    }
+                } catch (e) { }
+            });
+        }
+    }
+
     return false;
 }
 
