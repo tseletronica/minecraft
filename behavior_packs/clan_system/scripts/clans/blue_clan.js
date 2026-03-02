@@ -23,11 +23,11 @@ export function applyBlueEffects(player) {
     player.addEffect('dolphins_grace', 600, { amplifier: 0, showParticles: false }); // Nado rápido nativo
 
     // --- CLASSE: GUERREIRO DAS PROFUNDEZAS ---
-    // Visão clara e quebra de blocos na água
+    // Velocidade e força na água
     if (player.hasTag('blue_guerreiro')) {
         if (player.isInWater) {
-            player.addEffect('conduit_power', 300, { amplifier: 0, showParticles: false });
             player.addEffect('speed', 300, { amplifier: 1, showParticles: false });  // Velocidade II na água
+            player.addEffect('strength', 300, { amplifier: 0, showParticles: false }); // Força I na água
         }
     }
 

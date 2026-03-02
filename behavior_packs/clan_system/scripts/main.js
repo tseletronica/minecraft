@@ -238,7 +238,7 @@ const CLASS_ABILITIES = {
         construtor: 'Haste II + Auto-Smelt (Minério → Lingote)'
     },
     blue: {
-        guerreiro: 'Conduit Power + Velocidade II + Arpão + Onda de Choque',
+        guerreiro: 'Velocidade II + Força I na água + Arpão + Onda de Choque',
         construtor: 'Haste III na água + Coleta Direta pro Inventário'
     },
     green: {
