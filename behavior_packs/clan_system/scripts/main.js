@@ -302,7 +302,7 @@ async function showFinalConfirmationMenu(player, clanKey, className) {
         activeMenus.delete(player.id);
 
         if (response.canceled || response.selection === 1) {
-            system.runTimeout(() => { if (player.isValid) showClassSelectionMenu(player, clanKey); }, 5);
+            system.runTimeout(() => { if (player.isValid) showClanSelectionMenu(player); }, 5);
             return;
         }
 
