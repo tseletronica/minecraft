@@ -7,6 +7,7 @@ import { AUTO_STAFF } from './staff_config.js';
 
 // === MÓDULOS DO SISTEMA DE CLÃS ===
 import { CLANS, TOTEM_CONFIG, SHOP_CONFIG, CLAN_BASE_RADIUS } from './clans/clans_config.js';
+import { PERSONAL_BASES, isPersonalBaseOwner, getPersonalBaseOwner } from './clans/personal_bases.js';
 import { checkAdmin, getPlayerScore, addPlayerScore, getRank } from './systems/utils.js';
 import { activeMenus, squireTeleportTimers, isInBase } from './systems/protection.js';
 import { applyRedEffects, handleRedBreakBlock } from './clans/red_clan.js';
@@ -530,8 +531,18 @@ function maintenanceLoop() {
                 if (!entity.getEffect('resistance')) entity.addEffect('resistance', 20000000, { amplifier: 255, showParticles: false });
             });
         } catch (e) { }
-    } catch (e) { console.warn(`[CLANS] Erro manutenção: ${e}`); }
-}
+
+        // Manutenção de Bases Pessoais (Bedrock nos marcos)
+        try {
+            const overworldDim = world.getDimension('overworld');
+            for (const playerName in PERSONAL_BASES) {
+                const base = PERSONAL_BASES[playerName];
+                const loc = base.base;
+                const x = Math.floor(loc.x), y = Math.floor(loc.y), z = Math.floor(loc.z);
+                // Colocar bedrock no centro como marco
+                safeRunCommand(overworldDim, `setblock ${x} ${y} ${z} bedrock`);
+            }
+        } catch (e) { }
 system.runInterval(maintenanceLoop, 1200);
 
 // ==================================
@@ -563,6 +574,13 @@ world.beforeEvents.explosion.subscribe((event) => {
     const loc = source?.location || event.getImpactedBlocks()[0]?.location;
     if (!loc) return;
 
+    // Verificar bases pessoais
+    const personalBaseOwner = getPersonalBaseOwner(loc, dimension);
+    if (personalBaseOwner) {
+        event.cancel = true;
+        return;
+    }
+
     const baseKey = getCurrentBaseKey(loc);
     if (baseKey && baseKey !== 'default') {
         event.cancel = true;
@@ -575,6 +593,16 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
     const dim = block.dimension;
 
     if (checkAdmin(player)) return;
+
+    // 0. Verificação de Base Pessoal (prioridade máxima)
+    const personalBaseOwner = getPersonalBaseOwner(block.location, dim);
+    if (personalBaseOwner) {
+        if (!isPersonalBaseOwner(player, personalBaseOwner)) {
+            event.cancel = true;
+            player.onScreenDisplay.setActionBar(`§cBase pessoal de ${personalBaseOwner}!`);
+            return;
+        }
+    }
 
     // 1. Verificação de Proteção de Base
     const baseKey = getCurrentBaseKey(block);
@@ -635,6 +663,16 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
     const { player, block } = event;
     if (checkAdmin(player)) return;
 
+    // 0. Verificação de Base Pessoal (prioridade máxima)
+    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension);
+    if (personalBaseOwner) {
+        if (!isPersonalBaseOwner(player, personalBaseOwner)) {
+            event.cancel = true;
+            player.onScreenDisplay.setActionBar(`§cBase pessoal de ${personalBaseOwner}!`);
+            return;
+        }
+    }
+
     const baseKey = getCurrentBaseKey(block);
     if (baseKey && baseKey !== 'default') {
         const ownerClan = CLANS[baseKey];
@@ -661,6 +699,17 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { player, block } = event;
     if (checkAdmin(player)) return;
+
+    // Verificar bases pessoais
+    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension);
+    if (personalBaseOwner) {
+        if (!isPersonalBaseOwner(player, personalBaseOwner)) {
+            event.cancel = true;
+            player.sendMessage(`§cVocê não pode interagir na base pessoal de ${personalBaseOwner}!`);
+            return;
+        }
+    }
+
     for (const key in CLANS) {
         if (isInClanBase(block, key)) {
             const clan = CLANS[key];

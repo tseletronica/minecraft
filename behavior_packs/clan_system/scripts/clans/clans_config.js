@@ -100,15 +100,6 @@ export const TOTEM_CONFIG = [
         typeId: 'clans:totem_yellow',
         aura: 'minecraft:white_smoke_particle'
     },
-    {
-        id: 'staff_totem',
-        location: { x: 782, y: 72, z: -679 },
-        dimension: 'overworld',
-        tag: 'totem_staff',
-        name: '§0§lTOTEM BLACK',
-        typeId: 'clans:totem_red',
-        aura: 'minecraft:obsidian_tear_particle'
-    },
 ];
 
 // Configuração da Loja (Sistema Independente)
