@@ -672,7 +672,7 @@ world.beforeEvents.playerPlaceBlock.subscribe((event) => {
         }
     }
 
-    const baseKey = getCurrentBaseKey(block);
+    const baseKey = getCurrentBaseKey(block.location);
     if (baseKey && baseKey !== 'default') {
         const ownerClan = CLANS[baseKey];
         const playerClanTag = ownerClan.tag;
