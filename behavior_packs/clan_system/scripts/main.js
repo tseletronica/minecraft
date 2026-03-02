@@ -10,10 +10,10 @@ import { CLANS, TOTEM_CONFIG, SHOP_CONFIG, CLAN_BASE_RADIUS } from './clans/clan
 import { PERSONAL_BASES, isPersonalBaseOwner, getPersonalBaseOwner } from './clans/personal_bases.js';
 import { loadClanKings, saveClanKings, setKing, getKing, isKing } from './clans/clan_kings.js';
 import { loadClanMembers, saveClanMembers, addMember, removeMember, getMemberCargo, setMemberCargo, getClanMembers, isMember, getMembersByCargo, CARGO_TYPES } from './clans/clan_members.js';
-import { addRedMember, setRedMemberCargo } from './clans/red_members.js';
-import { addBlueMember, setBlueMemberCargo } from './clans/blue_members.js';
-import { addGreenMember, setGreenMemberCargo } from './clans/green_members.js';
-import { addYellowMember, setYellowMemberCargo } from './clans/yellow_members.js';
+import { addRedMember, setRedMemberCargo, loadRedMembers, RED_MEMBERS } from './clans/red_members.js';
+import { addBlueMember, setBlueMemberCargo, loadBlueMembers, BLUE_MEMBERS } from './clans/blue_members.js';
+import { addGreenMember, setGreenMemberCargo, loadGreenMembers, GREEN_MEMBERS } from './clans/green_members.js';
+import { addYellowMember, setYellowMemberCargo, loadYellowMembers, YELLOW_MEMBERS } from './clans/yellow_members.js';
 import { checkAdmin, getPlayerScore, addPlayerScore, getRank } from './systems/utils.js';
 import { activeMenus, squireTeleportTimers, isInBase } from './systems/protection.js';
 import { applyRedEffects, handleRedBreakBlock } from './clans/red_clan.js';
@@ -235,6 +235,35 @@ function activateClanSystem(player) {
         player.nameTag = `${clan.color}[ ${rank} ]\n§f${player.name}`;
         player.sendMessage(`§7[SISTEMA] Bem-vindo, ${rank} da ${clan.name}!`);
         world.sendMessage(`${clan.color}${player.name} §7entrou.`);
+        
+        // Carregar cargo salvo do jogador
+        system.runTimeout(() => {
+            try {
+                let playerCargo = null;
+                switch (currentClanKey) {
+                    case 'red': 
+                        playerCargo = RED_MEMBERS[player.name];
+                        break;
+                    case 'blue': 
+                        playerCargo = BLUE_MEMBERS[player.name];
+                        break;
+                    case 'green': 
+                        playerCargo = GREEN_MEMBERS[player.name];
+                        break;
+                    case 'yellow': 
+                        playerCargo = YELLOW_MEMBERS[player.name];
+                        break;
+                }
+                
+                if (playerCargo) {
+                    if (playerCargo === 'rei') {
+                        player.addTag('clan_king');
+                    } else if (playerCargo === 'guerreiro' || playerCargo === 'construtor') {
+                        player.addTag(`${currentClanKey}_${playerCargo}`);
+                    }
+                }
+            } catch (e) { }
+        }, 10);
     }
 }
 
@@ -1283,6 +1312,14 @@ world.beforeEvents.chatSend.subscribe((event) => {
 // INICIALIZAÇÃO
 // ==================================
 console.warn('[CLANS] Script main.js carregado (versão modular)');
+
+// Carregar dados persistentes
+loadClanKings();
+loadClanMembers();
+loadRedMembers();
+loadBlueMembers();
+loadGreenMembers();
+loadYellowMembers();
 
 system.runTimeout(() => {
     // world.sendMessage pode falhar se chamado no exato momento do load sem players
