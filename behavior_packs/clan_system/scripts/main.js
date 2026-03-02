@@ -660,7 +660,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
 function getCurrentBaseKey(blockOrLoc) {
     const loc = blockOrLoc.location || blockOrLoc;
     for (const key in CLANS) {
-        if (key === 'default') continue;
+        if (key === 'default' || key === 'staff') continue;
         const clan = CLANS[key];
         const dist = Math.sqrt((loc.x - clan.base.x) ** 2 + (loc.z - clan.base.z) ** 2);
         if (dist < (clan.overrideRadius || CLAN_BASE_RADIUS)) return key;

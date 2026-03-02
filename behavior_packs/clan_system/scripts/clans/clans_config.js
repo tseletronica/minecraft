@@ -49,9 +49,7 @@ export const CLANS = {
         name: 'Black Clan',
         color: '§0',
         tag: 'clan_black',
-        descSelection: 'Administração e Ordem',
-        base: { x: 782, y: 72, z: -679 },
-        dimension: 'overworld'
+        descSelection: 'Administração e Ordem'
     },
     default: {
         name: 'Nomades',
