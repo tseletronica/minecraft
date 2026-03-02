@@ -1112,7 +1112,15 @@ world.beforeEvents.chatSend.subscribe((event) => {
 // INICIALIZAÇÃO
 // ==================================
 console.warn('[CLANS] Script main.js carregado (versão modular)');
-world.sendMessage('§d[SISTEMA] Clãs carregado - VERSÃO 2.0 MODULAR');
+
+system.runTimeout(() => {
+    // world.sendMessage pode falhar se chamado no exato momento do load sem players
+    try {
+        world.sendMessage('§d[SISTEMA] Clãs carregado - VERSÃO 2.0 MODULAR');
+    } catch (e) {
+        console.warn('[CLANS] Erro ao enviar mensagem de boas-vindas:', e);
+    }
+}, 40); // 2 segundos após o load
 
 system.runTimeout(() => {
     for (const config of TOTEM_CONFIG) {
