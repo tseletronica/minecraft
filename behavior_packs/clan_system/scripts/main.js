@@ -658,7 +658,6 @@ export function getCurrentBaseKey(blockOrLoc) {
     return null;
 }
 
-
 world.beforeEvents.playerPlaceBlock.subscribe((event) => {
     const { player, block } = event;
     if (checkAdmin(player)) return;
