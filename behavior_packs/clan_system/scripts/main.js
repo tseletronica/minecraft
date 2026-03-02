@@ -461,6 +461,8 @@ function buyItem(player, item, category) {
 // ==================================
 // MANUTENÇÃO UNIFICADA
 // ==================================
+const playerPersonalBaseState = new Map(); // Rastreia se jogador está em base pessoal
+
 function maintenanceLoop() {
     try {
         const allPlayers = world.getAllPlayers();
@@ -472,6 +474,20 @@ function maintenanceLoop() {
             const resistance = p.getEffect('resistance');
             if (resistance && resistance.amplifier >= 250) p.removeEffect('resistance');
             if (p.location.y < -64) { p.teleport({ x: 0, y: 100, z: 0 }); p.sendMessage('§e[SISTEMA] Resgatado do limbo!'); }
+
+            // Verificar entrada/saída de bases pessoais
+            const currentBaseOwner = getPersonalBaseOwner(p.location, p.dimension.id);
+            const previousBaseOwner = playerPersonalBaseState.get(p.name);
+            
+            if (currentBaseOwner && currentBaseOwner !== previousBaseOwner) {
+                // Entrou em uma base pessoal
+                p.sendMessage(`§e[AVISO] Entrando em casa de §f${currentBaseOwner}§e!`);
+                playerPersonalBaseState.set(p.name, currentBaseOwner);
+            } else if (!currentBaseOwner && previousBaseOwner) {
+                // Saiu de uma base pessoal
+                p.sendMessage(`§e[AVISO] Saindo de casa de §f${previousBaseOwner}§e!`);
+                playerPersonalBaseState.delete(p.name);
+            }
 
             // Escudeiro: sistema de lealdade
             if (p.hasTag('staff_squire') && !p.hasTag('staff_loyalty_off')) {
@@ -504,11 +520,6 @@ function maintenanceLoop() {
                 }
             }
         }
-
-        try {
-            const staffDim = world.getDimension(CLANS.staff.dimension || 'overworld');
-            tryAddTickingArea(staffDim, CLANS.staff.base, 'staff_base_maint');
-        } catch (e) { }
 
         for (const config of TOTEM_CONFIG) {
             try {
@@ -559,15 +570,6 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         return;
     }
     if (target.hasTag('totem_npc')) { event.cancel = true; return; }
-});
-
-world.beforeEvents.explosion.subscribe((event) => {
-    const staffBase = CLANS.staff.base;
-    const radius = CLANS.staff.overrideRadius || CLAN_BASE_RADIUS;
-    for (const block of event.getImpactedBlocks()) {
-        const dist = Math.sqrt((block.location.x - staffBase.x) ** 2 + (block.location.z - staffBase.z) ** 2);
-        if (event.dimension.id === 'minecraft:overworld' && dist < radius) { event.cancel = true; return; }
-    }
 });
 
 // --- Anti-Explosão em Bases ---
