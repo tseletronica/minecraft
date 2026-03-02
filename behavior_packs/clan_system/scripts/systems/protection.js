@@ -33,24 +33,29 @@ export function isInClanBase(player, clanKey) {
     return isInBase(player, clan.base, clan.dimension || 'overworld', radius);
 }
 
-// Loop principal: Efeitos Passivos + Alertas de Território (a cada 1 segundo)
+// ⚪ Loop de Efeitos e Estados (em vez de espalhar em main.js)
 system.runInterval(() => {
-    try {
-        const allPlayers = world.getAllPlayers();
+    for (const player of world.getAllPlayers()) {
+        if (!player.hasTag('clan_selection_locked')) {
+            // --- INTEGRIDADE DE TAGS (Garante apenas 1 clã) ---
+            const currentTags = [];
+            for (const key in CLANS) { if (player.hasTag(CLANS[key].tag)) currentTags.push(CLANS[key].tag); }
 
-        for (const player of allPlayers) {
-            // Delegar efeitos passivos + classes para cada módulo de clã
+            if (currentTags.length > 1) {
+                const priority = currentTags.find(t => t !== 'clan_black' && t !== 'clan_default') || currentTags[0];
+                currentTags.forEach(t => { if (t !== priority) player.removeTag(t); });
+            }
+
+            // Delegar efeitos passivos + classes
             applyRedEffects(player);
             applyBlueEffects(player);
             applyGreenEffects(player);
             applyYellowEffects(player);
+            checkGreenStillness(player); // Loop especial Earth
 
-            // ⚪ BLACK CLAN: Imortalidade + Fraqueza para pacifistas
-            if (player.hasTag(CLANS.staff.tag)) {
-                applyStaffEffects(player);
-            }
+            if (player.hasTag(CLANS.staff.tag)) applyStaffEffects(player);
 
-            // --- BÊNÇÃOS DO TOTEM (quando na base do próprio clã) ---
+            // --- BÊNÇÃOS DO TOTEM ---
             let nearOwnTotem = false;
             let currentBaseKey = null;
 
@@ -63,7 +68,6 @@ system.runInterval(() => {
 
                 if (player.hasTag(clan.tag) && inThisBase) {
                     nearOwnTotem = true;
-                    // Delegar bênçãos para o módulo do clã
                     switch (clanKey) {
                         case 'red': applyRedTotemBlessings(player); break;
                         case 'blue': applyBlueTotemBlessings(player); break;
@@ -79,7 +83,7 @@ system.runInterval(() => {
                 if (res && res.amplifier >= 250) player.removeEffect('resistance');
             }
 
-            // --- ALERTAS DE TERRITÓRIO ---
+            // Alertas de Território
             const lastBaseKey = playerBaseState.get(player.id);
             if (currentBaseKey !== lastBaseKey) {
                 if (currentBaseKey) {
@@ -91,6 +95,6 @@ system.runInterval(() => {
                 playerBaseState.set(player.id, currentBaseKey);
             }
         }
-    } catch (error) { }
+    }
 }, 20);
 

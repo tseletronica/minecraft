@@ -85,11 +85,11 @@ export function handleGreenDamageImmunity(player, event) {
     // --- CLASSE: GUARDIÃO (Reflexão de Dano/Thorns) ---
     if (player.hasTag('green_guerreiro')) {
         const damager = event.damageSource.damagingEntity;
-        if (damager && damager.isValid() && Math.random() < 0.15) {
+        if (damager && damager.isValid && Math.random() < 0.15) {
             const reflected = Math.ceil(event.damage / 2);
             system.run(() => {
                 try {
-                    if (damager.isValid()) {
+                    if (damager.isValid) {
                         damager.applyDamage(reflected, { cause: 'thorns', damagingEntity: player });
                         player.onScreenDisplay.setActionBar(`§a🛡️ PELE DE ROCHA! §7Refletido ${reflected} de dano.`);
                     }

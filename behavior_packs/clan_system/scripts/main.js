@@ -130,34 +130,6 @@ system.runInterval(() => {
     }
 }, 100);
 
-system.runInterval(() => {
-    for (const player of world.getAllPlayers()) {
-        if (!player.hasTag('clan_selection_locked')) {
-            // --- INTEGRIDADE DE TAGS (Garante apenas 1 clã) ---
-            const playerClanTags = [];
-            for (const key in CLANS) {
-                if (player.hasTag(CLANS[key].tag)) playerClanTags.push(CLANS[key].tag);
-            }
-
-            // Se tiver mais de um clã, prioriza o que NÃO é black/default (ou o primeiro encontrado)
-            if (playerClanTags.length > 1) {
-                const priorityClan = playerClanTags.find(t => t !== 'clan_black' && t !== 'clan_default') || playerClanTags[0];
-                playerClanTags.forEach(t => {
-                    if (t !== priorityClan) player.removeTag(t);
-                });
-            }
-
-            applyRedEffects(player);
-            applyBlueEffects(player);
-            applyGreenEffects(player);
-            applyYellowEffects(player);
-            applyStaffEffects(player);
-
-            // Loop especial do Guerreiro Green
-            checkGreenStillness(player);
-        }
-    }
-}, 20);
 
 
 // ==================================
