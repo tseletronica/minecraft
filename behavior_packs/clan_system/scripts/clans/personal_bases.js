@@ -1,15 +1,16 @@
 // Configuração de bases pessoais por jogador
 // Formato: playerName -> { base: {x, y, z}, dimension, radius }
+// Raio de 30 blocos = 30 blocos para cada lado do centro
 export const PERSONAL_BASES = {
     'SixNevada63735': {
         base: { x: 780, y: 72, z: -722 },
         dimension: 'overworld',
-        radius: 15
+        radius: 30
     },
     'IdleNormal81046': {
         base: { x: 820, y: 72, z: -657 },
         dimension: 'overworld',
-        radius: 15
+        radius: 30
     }
 };
 

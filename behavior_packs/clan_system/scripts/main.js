@@ -547,7 +547,8 @@ const playerPersonalBaseState = new Map();
 system.runInterval(() => {
     for (const player of world.getAllPlayers()) {
         try {
-            const currentBaseOwner = getPersonalBaseOwner(player.location, player.dimension.id);
+            const dimId = player.dimension.id.replace('minecraft:', '');
+            const currentBaseOwner = getPersonalBaseOwner(player.location, dimId);
             const previousBaseOwner = playerPersonalBaseState.get(player.name);
             
             if (currentBaseOwner && currentBaseOwner !== previousBaseOwner) {
@@ -584,7 +585,7 @@ world.beforeEvents.explosion.subscribe((event) => {
     if (!loc) return;
 
     // Verificar bases pessoais
-    const personalBaseOwner = getPersonalBaseOwner(loc, dimension);
+    const personalBaseOwner = getCurrentPersonalBaseOwner(loc, dimension);
     if (personalBaseOwner) {
         event.cancel = true;
         return;
@@ -604,7 +605,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
     if (checkAdmin(player)) return;
 
     // 0. Verificação de Base Pessoal (prioridade máxima)
-    const personalBaseOwner = getPersonalBaseOwner(block.location, dim);
+    const personalBaseOwner = getCurrentPersonalBaseOwner(block.location, dim);
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
@@ -667,12 +668,24 @@ function getCurrentBaseKey(blockOrLoc) {
     return null;
 }
 
+// Helper para descobrir base pessoal de um bloco
+function getCurrentPersonalBaseOwner(location, dimension) {
+    const dimId = dimension.id ? dimension.id.replace('minecraft:', '') : dimension;
+    for (const playerName in PERSONAL_BASES) {
+        const base = PERSONAL_BASES[playerName];
+        if (base.dimension.replace('minecraft:', '') !== dimId) continue;
+        const dist = Math.sqrt((location.x - base.base.x) ** 2 + (location.z - base.base.z) ** 2);
+        if (dist < base.radius) return playerName;
+    }
+    return null;
+}
+
 world.beforeEvents.playerPlaceBlock.subscribe((event) => {
     const { player, block } = event;
     if (checkAdmin(player)) return;
 
     // 0. Verificação de Base Pessoal (prioridade máxima)
-    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension.id);
+    const personalBaseOwner = getCurrentPersonalBaseOwner(block.location, block.dimension);
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
@@ -709,7 +722,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     if (checkAdmin(player)) return;
 
     // Verificar bases pessoais
-    const personalBaseOwner = getPersonalBaseOwner(block.location, block.dimension.id);
+    const personalBaseOwner = getCurrentPersonalBaseOwner(block.location, block.dimension);
     if (personalBaseOwner) {
         if (!isPersonalBaseOwner(player, personalBaseOwner)) {
             event.cancel = true;
