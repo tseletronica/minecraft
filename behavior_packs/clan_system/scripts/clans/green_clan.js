@@ -165,8 +165,14 @@ export function handleGreenBreakBlock(player, block, dimension) {
     if (crops.includes(block.typeId) && Math.random() < 0.10) {
         const loc = block.location;
         system.run(() => {
-            dimension.spawnItem(new ItemStack(block.typeId, 1), { x: loc.x + 0.5, y: loc.y + 0.5, z: loc.z + 0.5 });
-            player.onScreenDisplay.setActionBar('§6🌾 COLHEITA FARDA! §7Recurso duplicado.');
+            try {
+                const itemEntity = dimension.spawnEntity('minecraft:item', { x: loc.x + 0.5, y: loc.y + 0.5, z: loc.z + 0.5 });
+                const itemComp = itemEntity.getComponent('minecraft:item');
+                if (itemComp) {
+                    itemComp.itemStack = new ItemStack(block.typeId, 1);
+                }
+                player.onScreenDisplay.setActionBar('§6🌾 COLHEITA FARDA! §7Recurso duplicado.');
+            } catch (e) { }
         });
     }
 
