@@ -150,7 +150,12 @@ system.runInterval(() => {
 // SISTEMA DE SPAWN / SELEÇÃO DE CLÃ
 // ==================================
 function activateClanSystem(player) {
-    if (AUTO_STAFF.includes(player.name)) {
+    // Só aplica AUTO_STAFF se o jogador estiver SEM clã ou se for clã 'staff' (migração/fix)
+    let needsStaffAuto = AUTO_STAFF.includes(player.name);
+    let hasAnyClan = false;
+    for (const key in CLANS) if (player.hasTag(CLANS[key].tag)) { hasAnyClan = true; break; }
+
+    if (needsStaffAuto && !hasAnyClan) {
         // Limpar tags antigas
         const allClanTags = ['clan_red', 'clan_blue', 'clan_green', 'clan_yellow', 'clan_default', 'clan_black'];
         const allClassTags = [
@@ -362,7 +367,7 @@ world.afterEvents.playerSpawn.subscribe((event) => {
             player.removeTag('awaiting_clan_activation');
             activateClanSystem(player);
         }
-    }, 200);
+    }, 20); // Reduzido de 200 para 20 (1 segundo)
 });
 
 // ==================================
@@ -1075,9 +1080,15 @@ world.beforeEvents.chatSend.subscribe((event) => {
             system.run(() => {
                 allClanTags.forEach(tag => { if (target.hasTag(tag)) target.removeTag(tag); });
                 allClassTags.forEach(tag => { if (target.hasTag(tag)) target.removeTag(tag); });
+
+                // Força a tag clan_selection_locked para ignorar a lógica automática de login por 1 ciclo
+                target.addTag('clan_selection_locked');
+
                 player.sendMessage(`§a[SISTEMA] Clã/Classe de ${target.name} resetados!`);
                 if (target.id !== player.id) target.sendMessage('§e[AVISO] Seu clã foi resetado por um administrador.');
-                activateClanSystem(target);
+
+                // Chamada direta do menu ignorando activateClanSystem (que tem travas de login)
+                showClanSelectionMenu(target);
             });
             return;
         }
