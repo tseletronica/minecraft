@@ -231,18 +231,39 @@ function activateClanSystem(player) {
     }
 }
 
+// Habilidades de cada classe por clã
+const CLASS_ABILITIES = {
+    red: {
+        guerreiro: 'Força I + Incendiar (30%) + Fúria + Último Suspiro',
+        construtor: 'Haste II + Auto-Smelt (Minério → Lingote)'
+    },
+    blue: {
+        guerreiro: 'Conduit Power + Velocidade II + Arpão + Onda de Choque',
+        construtor: 'Haste III na água + Coleta Direta pro Inventário'
+    },
+    green: {
+        guerreiro: 'Resistência I + Regen II + Absorption II + Raízes + Thorns',
+        construtor: 'Haste III em profundezas + Colheita Farta + Geólogo'
+    },
+    yellow: {
+        guerreiro: 'Velocidade II + Salto II + Rajada de Vento + Esquiva Fantasma',
+        construtor: 'Haste III + Alcance do Vento (+3 blocos)'
+    }
+};
+
 // Menu especial para quem já tem clã mas precisa escolher classe
 async function showClassSelectionMenu(player, clanKey) {
     if (!player || activeMenus.has(player.id)) return;
     activeMenus.add(player.id);
     const clan = CLANS[clanKey];
+    const abilities = CLASS_ABILITIES[clanKey] || { guerreiro: 'Habilidades de Guerreiro', construtor: 'Habilidades de Construtor' };
 
     const form = new ActionFormData()
         .title(`§lESCOLHA SUA FUNÇÃO`)
-        .body(`${clan.color}${clan.name}\n\n§7Escolha sua função no clã:`);
+        .body(`${clan.color}${clan.name}\n\n§7Escolha sua função no clã:\n`);
 
-    form.button(`${clan.color}§l⚔ GUERREIRO\n§r§8Focado em Combate e PVP`);
-    form.button(`${clan.color}§l🏗 CONSTRUTOR\n§r§8Focado em Base e Recursos`);
+    form.button(`${clan.color}§l⚔ GUERREIRO\n§r§8${abilities.guerreiro}`);
+    form.button(`${clan.color}§l🏗 CONSTRUTOR\n§r§8${abilities.construtor}`);
 
     try {
         const response = await form.show(player);
