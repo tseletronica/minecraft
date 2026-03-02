@@ -30,9 +30,9 @@ export function applyYellowEffects(player) {
     }
 
     // --- CLASSE: ENGENHEIRO DO VENTO (Construtor) ---
-    // Haste IV para super mineração e construção
+    // Balanceamento: Reduzir Haste IV para Haste III
     if (player.hasTag('yellow_construtor')) {
-        player.addEffect('haste', 600, { amplifier: 3, showParticles: false }); // Haste IV
+        player.addEffect('haste', 600, { amplifier: 2, showParticles: false }); // Haste III (era IV)
     }
 
     // --- CLASSE: REI ---

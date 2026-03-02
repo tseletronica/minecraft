@@ -21,10 +21,11 @@ export function applyGreenEffects(player) {
     player.addEffect('night_vision', 600, { showParticles: false });
 
     // --- CLASSE: GUARDIÃO DA FLORESTA ---
-    // Regeneração I passiva (resistência em combate)
+    // Balanceamento: Aumentar defesa
     if (player.hasTag('green_guerreiro')) {
-        player.addEffect('regeneration', 200, { amplifier: 0, showParticles: false }); // Regen I
-        player.addEffect('absorption', 200, { amplifier: 0, showParticles: false });   // 2 corações extras
+        player.addEffect('resistance', 600, { amplifier: 0, showParticles: false });   // Resistance I (NOVO)
+        player.addEffect('regeneration', 600, { amplifier: 1, showParticles: false }); // Regen II (era I)
+        player.addEffect('absorption', 600, { amplifier: 1, showParticles: false });   // Absorption II (era I)
     }
 
     // --- CLASSE: MESTRE DA TERRA (Construtor) ---
@@ -68,9 +69,15 @@ export function handleGreenCombat(damager, victim) {
 
     // --- CLASSE: GUARDIÃO DA FLORESTA (Tanque) ---
     if (damager.hasTag('green_guerreiro')) {
-        // Raízes: 20% de chance de enraizar
-        if (Math.random() < 0.20) {
+        // Raízes: 25% de chance de enraizar + Weakness
+        if (Math.random() < 0.25) {
             victim.addEffect('slowness', 40, { amplifier: 3, showParticles: true });
+            
+            // 50% de chance de aplicar Weakness I
+            if (Math.random() < 0.50) {
+                victim.addEffect('weakness', 100, { amplifier: 0, showParticles: true });
+            }
+            
             damager.onScreenDisplay.setActionBar('§a🌿 RAÍZES DA TERRA! §7Inimigo enraizado.');
         }
     }
