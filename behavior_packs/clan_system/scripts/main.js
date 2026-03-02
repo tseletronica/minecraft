@@ -8,6 +8,12 @@ import { AUTO_STAFF } from './staff_config.js';
 // === MÓDULOS DO SISTEMA DE CLÃS ===
 import { CLANS, TOTEM_CONFIG, SHOP_CONFIG, CLAN_BASE_RADIUS } from './clans/clans_config.js';
 import { PERSONAL_BASES, isPersonalBaseOwner, getPersonalBaseOwner } from './clans/personal_bases.js';
+import { loadClanKings, saveClanKings, setKing, getKing, isKing } from './clans/clan_kings.js';
+import { loadClanMembers, saveClanMembers, addMember, removeMember, getMemberCargo, setMemberCargo, getClanMembers, isMember, getMembersByCargo, CARGO_TYPES } from './clans/clan_members.js';
+import { addRedMember, setRedMemberCargo } from './clans/red_members.js';
+import { addBlueMember, setBlueMemberCargo } from './clans/blue_members.js';
+import { addGreenMember, setGreenMemberCargo } from './clans/green_members.js';
+import { addYellowMember, setYellowMemberCargo } from './clans/yellow_members.js';
 import { checkAdmin, getPlayerScore, addPlayerScore, getRank } from './systems/utils.js';
 import { activeMenus, squireTeleportTimers, isInBase } from './systems/protection.js';
 import { applyRedEffects, handleRedBreakBlock } from './clans/red_clan.js';
@@ -318,6 +324,14 @@ async function showFinalConfirmationMenu(player, clanKey, className) {
             player.removeEffect('resistance');
             player.removeEffect('slowness');
         } catch (e) { }
+
+        // Salvar membro no clan
+        switch (clanKey) {
+            case 'red': addRedMember(player.name, className); break;
+            case 'blue': addBlueMember(player.name, className); break;
+            case 'green': addGreenMember(player.name, className); break;
+            case 'yellow': addYellowMember(player.name, className); break;
+        }
 
         const rankDisplay = className.charAt(0).toUpperCase() + className.slice(1);
         player.nameTag = `${clan.color}[ ${rankDisplay} ]\n§f${player.name}`;
@@ -1138,17 +1152,47 @@ world.beforeEvents.chatSend.subscribe((event) => {
         if (message.startsWith('!setrei ')) {
             event.cancel = true;
             if (!checkAdmin(player)) return;
-            const targetName = message.substring(8).trim();
-            const target = world.getAllPlayers().find(p => p.name === targetName);
-            if (!target) { player.sendMessage(`§cJogador "${targetName}" não encontrado!`); return; }
-            let targetClan = null;
-            for (const key in CLANS) if (target.hasTag(CLANS[key].tag)) { targetClan = CLANS[key]; break; }
-            if (!targetClan || targetClan.tag === 'clan_staff' || targetClan.tag === 'clan_default') { player.sendMessage('§cDeve ser de uma das 4 Nações!'); return; }
-            world.getAllPlayers().filter(p => p.hasTag(targetClan.tag) && p.hasTag('clan_king')).forEach(p => { p.removeTag('clan_king'); p.sendMessage('§c[AVISO] Você não é mais o Rei.'); });
-            target.addTag('clan_king');
-            player.sendMessage(`§a${target.name} agora é Rei da ${targetClan.name}!`);
-            target.sendMessage(`§6§l[COROAÇÃO] §eVocê é Rei da ${targetClan.color}${targetClan.name}§e!`);
-            system.runTimeout(() => updatePlayerNames(), 20);
+            const args = message.substring(8).trim().split(' ');
+            const targetName = args[0];
+            const clanKey = args[1]?.toLowerCase();
+            
+            // Se não especificar clan, tenta descobrir pelo jogador online
+            if (!clanKey) {
+                const target = world.getAllPlayers().find(p => p.name === targetName);
+                if (!target) { player.sendMessage(`§cJogador "${targetName}" não encontrado online! Use: !setrei "Nome" clan`); return; }
+                let targetClan = null;
+                for (const key in CLANS) if (target.hasTag(CLANS[key].tag)) { targetClan = CLANS[key]; break; }
+                if (!targetClan || targetClan.tag === 'clan_staff' || targetClan.tag === 'clan_default') { player.sendMessage('§cDeve ser de uma das 4 Nações!'); return; }
+                
+                // Remover rei antigo
+                world.getAllPlayers().filter(p => p.hasTag(targetClan.tag) && p.hasTag('clan_king')).forEach(p => { p.removeTag('clan_king'); p.sendMessage('§c[AVISO] Você não é mais o Rei.'); });
+                
+                // Adicionar novo rei
+                target.addTag('clan_king');
+                setKing(targetClan.tag.replace('clan_', ''), targetName);
+                player.sendMessage(`§a${target.name} agora é Rei da ${targetClan.name}!`);
+                target.sendMessage(`§6§l[COROAÇÃO] §eVocê é Rei da ${targetClan.color}${targetClan.name}§e!`);
+                system.runTimeout(() => updatePlayerNames(), 20);
+            } else {
+                // Especificou o clan - pode ser offline
+                const clan = CLANS[clanKey];
+                if (!clan || clan.tag === 'clan_staff' || clan.tag === 'clan_default') { player.sendMessage('§cClã inválido! Use: red, blue, green ou yellow'); return; }
+                
+                // Remover rei antigo (se online)
+                world.getAllPlayers().filter(p => p.hasTag(clan.tag) && p.hasTag('clan_king')).forEach(p => { p.removeTag('clan_king'); p.sendMessage('§c[AVISO] Você não é mais o Rei.'); });
+                
+                // Salvar novo rei
+                setKing(clanKey, targetName);
+                player.sendMessage(`§a${targetName} agora é Rei da ${clan.name}!`);
+                
+                // Se estiver online, notificar
+                const onlineTarget = world.getAllPlayers().find(p => p.name === targetName);
+                if (onlineTarget) {
+                    onlineTarget.addTag('clan_king');
+                    onlineTarget.sendMessage(`§6§l[COROAÇÃO] §eVocê é Rei da ${clan.color}${clan.name}§e!`);
+                    system.runTimeout(() => updatePlayerNames(), 20);
+                }
+            }
             return;
         }
 
