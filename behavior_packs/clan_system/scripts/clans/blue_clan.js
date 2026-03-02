@@ -22,11 +22,6 @@ export function applyBlueEffects(player) {
     player.addEffect('water_breathing', 600, { showParticles: false });
     player.addEffect('dolphins_grace', 600, { amplifier: 0, showParticles: false }); // Nado rápido nativo
 
-    // Visão Noturna debaixo d'água
-    if (player.isInWater) {
-        player.addEffect('night_vision', 600, { showParticles: false });
-    }
-
     // --- CLASSE: GUERREIRO DAS PROFUNDEZAS ---
     // Visão clara e quebra de blocos na água
     if (player.hasTag('blue_guerreiro')) {
